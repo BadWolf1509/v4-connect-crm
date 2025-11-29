@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(git -C \"D:\\V4-Connect-CRM\" status)",
+      "Bash(git -C /tmp config:*)",
+      "Bash(git config:*)",
+      "Bash(pnpm init)",
+      "Bash(npm --version:*)",
+      "Bash(node --version:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm db:push:*)",
+      "Bash(node test-connection.mjs:*)",
+      "Bash(node push-schema.mjs:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

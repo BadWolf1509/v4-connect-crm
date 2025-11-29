@@ -1,0 +1,6 @@
+{
+  "name": "@v4-connect/typescript",
+  "version": "0.1.0",
+  "private": true,
+  "files": ["*.json"]
+}
