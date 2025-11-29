@@ -88,7 +88,7 @@ async function startCampaign(data: CampaignJob) {
 }
 
 async function sendCampaignMessage(data: SendCampaignMessageJob) {
-  const { campaignId, contactId, templateId, params } = data;
+  const { campaignId: _campaignId, contactId, templateId: _templateId, params: _params } = data;
 
   console.log(`Sending campaign message to ${contactId}`);
 

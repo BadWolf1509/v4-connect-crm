@@ -310,10 +310,14 @@ export default function ChannelsPage() {
             {connectionState === 'idle' && (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">
+                  <label
+                    htmlFor="channel-name"
+                    className="mb-2 block text-sm font-medium text-gray-300"
+                  >
                     Nome do Canal
                   </label>
                   <input
+                    id="channel-name"
                     type="text"
                     value={newChannelName}
                     onChange={(e) => setNewChannelName(e.target.value)}

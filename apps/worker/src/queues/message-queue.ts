@@ -60,7 +60,7 @@ export const messageWorker = new Worker<SendMessageJob | ProcessIncomingJob>(
 );
 
 async function sendMessage(data: SendMessageJob) {
-  const { channelType, message, recipientPhone, recipientId } = data;
+  const { channelType, message, recipientPhone: _recipientPhone, recipientId: _recipientId } = data;
 
   console.log(`Sending ${message.type} message via ${channelType}`);
 
@@ -91,7 +91,7 @@ async function sendMessage(data: SendMessageJob) {
 }
 
 async function processIncoming(data: ProcessIncomingJob) {
-  const { channelType, rawPayload } = data;
+  const { channelType, rawPayload: _rawPayload } = data;
 
   console.log(`Processing incoming ${channelType} message`);
 

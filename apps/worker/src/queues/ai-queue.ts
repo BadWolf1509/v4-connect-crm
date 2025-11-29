@@ -71,7 +71,7 @@ export const aiWorker = new Worker<AIJob>(
 );
 
 async function transcribeAudio(data: TranscriptionJob) {
-  const { messageId, audioUrl, language } = data;
+  const { messageId, audioUrl: _audioUrl, language: _language } = data;
 
   console.log(`Transcribing audio for message ${messageId}`);
 
@@ -91,7 +91,7 @@ async function transcribeAudio(data: TranscriptionJob) {
 }
 
 async function generateSuggestion(data: SuggestionJob) {
-  const { conversationId, messages } = data;
+  const { conversationId, messages: _messages } = data;
 
   console.log(`Generating suggestions for conversation ${conversationId}`);
 
@@ -114,7 +114,7 @@ async function generateSuggestion(data: SuggestionJob) {
 }
 
 async function analyzeSentiment(data: SentimentJob) {
-  const { messageId, content } = data;
+  const { messageId, content: _content } = data;
 
   console.log(`Analyzing sentiment for message ${messageId}`);
 
@@ -129,7 +129,7 @@ async function analyzeSentiment(data: SentimentJob) {
 }
 
 async function processChatbot(data: ChatbotJob) {
-  const { chatbotId, conversationId, message, context } = data;
+  const { chatbotId, conversationId, message: _message, context: _context } = data;
 
   console.log(`Processing chatbot ${chatbotId} for conversation ${conversationId}`);
 
