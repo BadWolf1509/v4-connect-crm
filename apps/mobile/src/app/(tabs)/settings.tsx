@@ -1,17 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Bell, ChevronRight, HelpCircle, LogOut, Palette, Shield, User } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  User,
-  Bell,
-  Palette,
-  Shield,
-  HelpCircle,
-  LogOut,
-  ChevronRight,
-} from 'lucide-react-native';
 
 interface SettingsItem {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   description?: string;
   onPress?: () => void;
@@ -70,9 +63,9 @@ export default function SettingsScreen() {
 
         {/* Settings List */}
         <View className="mt-6">
-          {settingsItems.map((item, index) => (
+          {settingsItems.map((item) => (
             <TouchableOpacity
-              key={index}
+              key={item.label}
               className="flex-row items-center px-4 py-4 border-b border-gray-800"
             >
               <View className="w-10 h-10 rounded-xl bg-gray-800 items-center justify-center">

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { users, tenants } = schema;

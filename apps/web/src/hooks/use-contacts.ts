@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type Contact } from '@/lib/api-client';
+import { type Contact, apiClient } from '@/lib/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ContactsResponse {
   contacts: Contact[];
@@ -47,8 +47,7 @@ export function useCreateContact() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<Contact>) =>
-      apiClient.post<Contact>('/contacts', data),
+    mutationFn: (data: Partial<Contact>) => apiClient.post<Contact>('/contacts', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
     },

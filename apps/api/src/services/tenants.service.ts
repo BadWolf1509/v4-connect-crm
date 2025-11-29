@@ -6,33 +6,25 @@ const { tenants } = schema;
 export interface CreateTenantData {
   name: string;
   slug: string;
-  plan?: 'free' | 'starter' | 'professional' | 'enterprise';
+  plan?: 'free' | 'starter' | 'pro' | 'enterprise';
 }
 
 export interface UpdateTenantData {
   name?: string;
   logoUrl?: string;
-  plan?: 'free' | 'starter' | 'professional' | 'enterprise';
+  plan?: 'free' | 'starter' | 'pro' | 'enterprise';
   settings?: Record<string, unknown>;
 }
 
 export const tenantsService = {
   async findById(id: string) {
-    const result = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, id))
-      .limit(1);
+    const result = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
 
     return result[0] || null;
   },
 
   async findBySlug(slug: string) {
-    const result = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.slug, slug))
-      .limit(1);
+    const result = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1);
 
     return result[0] || null;
   },
@@ -67,7 +59,7 @@ export const tenantsService = {
     const baseSlug = name
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\p{M}/gu, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 

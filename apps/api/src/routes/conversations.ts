@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { conversationsService } from '../services/conversations.service';
 
-const conversationsRoutes = new Hono();
+const conversationsRoutes = new Hono<AppType>();
 
 conversationsRoutes.use('*', requireAuth);
 
@@ -28,14 +28,7 @@ const transferSchema = z.object({
 // List conversations
 conversationsRoutes.get('/', async (c) => {
   const auth = c.get('auth');
-  const {
-    page = '1',
-    limit = '20',
-    status,
-    inboxId,
-    assigneeId,
-    channelId,
-  } = c.req.query();
+  const { page = '1', limit = '20', status, inboxId, assigneeId, channelId } = c.req.query();
 
   const result = await conversationsService.findAll({
     tenantId: auth.tenantId,
@@ -43,8 +36,8 @@ conversationsRoutes.get('/', async (c) => {
     inboxId,
     assigneeId,
     channelId,
-    page: parseInt(page),
-    limit: parseInt(limit),
+    page: Number.parseInt(page),
+    limit: Number.parseInt(limit),
   });
 
   return c.json(result);
@@ -65,48 +58,36 @@ conversationsRoutes.get('/:id', async (c) => {
 });
 
 // Update conversation status
-conversationsRoutes.patch(
-  '/:id/status',
-  zValidator('json', updateStatusSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { status } = c.req.valid('json');
+conversationsRoutes.patch('/:id/status', zValidator('json', updateStatusSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { status } = c.req.valid('json');
 
-    const conversation = await conversationsService.update(id, auth.tenantId, {
-      status,
-    });
+  const conversation = await conversationsService.update(id, auth.tenantId, {
+    status,
+  });
 
-    if (!conversation) {
-      throw new HTTPException(404, { message: 'Conversation not found' });
-    }
-
-    return c.json(conversation);
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
   }
-);
+
+  return c.json(conversation);
+});
 
 // Assign conversation
-conversationsRoutes.patch(
-  '/:id/assign',
-  zValidator('json', assignSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { userId } = c.req.valid('json');
+conversationsRoutes.patch('/:id/assign', zValidator('json', assignSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { userId } = c.req.valid('json');
 
-    const conversation = await conversationsService.assign(
-      id,
-      auth.tenantId,
-      userId
-    );
+  const conversation = await conversationsService.assign(id, auth.tenantId, userId);
 
-    if (!conversation) {
-      throw new HTTPException(404, { message: 'Conversation not found' });
-    }
-
-    return c.json(conversation);
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
   }
-);
+
+  return c.json(conversation);
+});
 
 // Unassign conversation
 conversationsRoutes.post('/:id/unassign', async (c) => {
@@ -151,47 +132,35 @@ conversationsRoutes.post('/:id/reopen', async (c) => {
 });
 
 // Snooze conversation
-conversationsRoutes.post(
-  '/:id/snooze',
-  zValidator('json', snoozeSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { until } = c.req.valid('json');
+conversationsRoutes.post('/:id/snooze', zValidator('json', snoozeSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { until } = c.req.valid('json');
 
-    const conversation = await conversationsService.snooze(
-      id,
-      auth.tenantId,
-      new Date(until)
-    );
+  const conversation = await conversationsService.snooze(id, auth.tenantId, new Date(until));
 
-    if (!conversation) {
-      throw new HTTPException(404, { message: 'Conversation not found' });
-    }
-
-    return c.json(conversation);
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
   }
-);
+
+  return c.json(conversation);
+});
 
 // Transfer to another inbox
-conversationsRoutes.post(
-  '/:id/transfer',
-  zValidator('json', transferSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { inboxId } = c.req.valid('json');
+conversationsRoutes.post('/:id/transfer', zValidator('json', transferSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { inboxId } = c.req.valid('json');
 
-    const conversation = await conversationsService.update(id, auth.tenantId, {
-      inboxId,
-    });
+  const conversation = await conversationsService.update(id, auth.tenantId, {
+    inboxId,
+  });
 
-    if (!conversation) {
-      throw new HTTPException(404, { message: 'Conversation not found' });
-    }
-
-    return c.json(conversation);
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
   }
-);
+
+  return c.json(conversation);
+});
 
 export { conversationsRoutes };

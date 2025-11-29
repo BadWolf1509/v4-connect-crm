@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Search, Plus, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 
 export function Header() {
@@ -27,7 +27,10 @@ export function Header() {
       {/* Actions */}
       <div className="flex items-center gap-3">
         {/* New Button */}
-        <button className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-v4-red-600">
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-v4-red-600"
+        >
           <Plus className="h-4 w-4" />
           <span>Novo</span>
         </button>
@@ -35,6 +38,7 @@ export function Header() {
         {/* Notifications */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setShowNotifications(!showNotifications)}
             className="relative rounded-lg p-2 text-gray-400 transition hover:bg-gray-800 hover:text-white"
           >
@@ -44,15 +48,10 @@ export function Header() {
 
           {showNotifications && (
             <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-gray-800 bg-gray-900 p-4 shadow-xl">
-              <h3 className="mb-3 text-sm font-semibold text-white">
-                Notificações
-              </h3>
+              <h3 className="mb-3 text-sm font-semibold text-white">Notificações</h3>
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg p-2 hover:bg-gray-800"
-                  >
+                  <div key={i} className="flex items-start gap-3 rounded-lg p-2 hover:bg-gray-800">
                     <div className="h-8 w-8 rounded-full bg-v4-red-500/20" />
                     <div className="flex-1">
                       <p className="text-sm text-white">Nova mensagem</p>
@@ -61,7 +60,10 @@ export function Header() {
                   </div>
                 ))}
               </div>
-              <button className="mt-3 w-full text-center text-sm text-v4-red-500 hover:underline">
+              <button
+                type="button"
+                className="mt-3 w-full text-center text-sm text-v4-red-500 hover:underline"
+              >
                 Ver todas
               </button>
             </div>
@@ -71,6 +73,7 @@ export function Header() {
         {/* User Menu */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 rounded-lg p-2 transition hover:bg-gray-800"
           >
@@ -87,15 +90,24 @@ export function Header() {
                 <p className="text-xs text-gray-500">usuario@empresa.com</p>
               </div>
               <div className="py-1">
-                <button className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-gray-800 hover:text-white">
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
                   Meu Perfil
                 </button>
-                <button className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-gray-800 hover:text-white">
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
                   Configurações
                 </button>
               </div>
               <div className="border-t border-gray-800 py-1">
-                <button className="w-full px-4 py-2 text-left text-sm text-v4-red-500 hover:bg-gray-800">
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-v4-red-500 hover:bg-gray-800"
+                >
                   Sair
                 </button>
               </div>

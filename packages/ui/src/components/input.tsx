@@ -15,13 +15,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           error
             ? 'border-red-500 focus-visible:ring-red-500'
             : 'border-gray-700 focus-visible:border-v4-red-500',
-          className
+          className,
         )}
         ref={ref}
         {...props}
       />
     );
-  }
+  },
 );
 Input.displayName = 'Input';
 
@@ -38,13 +38,13 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           error
             ? 'border-red-500 focus-visible:ring-red-500'
             : 'border-gray-700 focus-visible:border-v4-red-500',
-          className
+          className,
         )}
         ref={ref}
         {...props}
       />
     );
-  }
+  },
 );
 Textarea.displayName = 'Textarea';
 

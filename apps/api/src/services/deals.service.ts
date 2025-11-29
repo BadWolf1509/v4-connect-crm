@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { deals, pipelines, stages, contacts, users, activities } = schema;
@@ -331,10 +331,7 @@ export const dealsService = {
   },
 
   async deleteActivity(activityId: string) {
-    const result = await db
-      .delete(activities)
-      .where(eq(activities.id, activityId))
-      .returning();
+    const result = await db.delete(activities).where(eq(activities.id, activityId)).returning();
 
     return result[0] || null;
   },

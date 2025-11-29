@@ -30,15 +30,18 @@ class ApiClient {
     return headers;
   }
 
-  private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
+  private buildUrl(
+    path: string,
+    params?: Record<string, string | number | boolean | undefined>,
+  ): string {
     const url = new URL(`${this.baseUrl}/api/v1${path}`);
 
     if (params) {
-      Object.entries(params).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(params)) {
         if (value !== undefined) {
           url.searchParams.append(key, String(value));
         }
-      });
+      }
     }
 
     return url.toString();
@@ -124,14 +127,14 @@ export const api = new ApiClient(API_URL);
 // Public API client (no auth required)
 export async function publicApi<T>(
   path: string,
-  options?: RequestInit & { params?: Record<string, string> }
+  options?: RequestInit & { params?: Record<string, string> },
 ): Promise<T> {
   const url = new URL(`${API_URL}/api/v1${path}`);
 
   if (options?.params) {
-    Object.entries(options.params).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(options.params)) {
       url.searchParams.append(key, value);
-    });
+    }
   }
 
   const response = await fetch(url.toString(), {

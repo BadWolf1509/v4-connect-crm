@@ -3,7 +3,7 @@
   "display": "Library",
   "extends": "./base.json",
   "compilerOptions": {
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist"

@@ -1,5 +1,5 @@
-import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { create } from 'zustand';
 
 interface User {
   id: string;
@@ -24,7 +24,7 @@ export const useAuth = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (email: string, password: string) => {
+  login: async (email: string, _password: string) => {
     // TODO: Call API to login
     const response = { user: { id: '1', name: 'User', email, role: 'agent' }, token: 'jwt' };
 
@@ -67,7 +67,7 @@ export const useAuth = create<AuthState>((set) => ({
       } else {
         set({ isLoading: false });
       }
-    } catch (error) {
+    } catch (_error) {
       set({ isLoading: false });
     }
   },

@@ -1,7 +1,7 @@
-import { eq, and, desc, sql, or } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
-const { conversations, contacts, channels, users, messages } = schema;
+const { conversations, contacts, channels, users, messages: _messages } = schema;
 
 export interface ConversationFilters {
   tenantId: string;
@@ -172,8 +172,8 @@ export const conversationsService = {
           eq(conversations.contactId, contactId),
           eq(conversations.channelId, channelId),
           eq(conversations.tenantId, tenantId),
-          or(eq(conversations.status, 'pending'), eq(conversations.status, 'open'))
-        )
+          or(eq(conversations.status, 'pending'), eq(conversations.status, 'open')),
+        ),
       )
       .orderBy(desc(conversations.createdAt))
       .limit(1);
@@ -256,7 +256,7 @@ export const conversationsService = {
     const existing = await this.findByContactAndChannel(
       data.contactId,
       data.channelId,
-      data.tenantId
+      data.tenantId,
     );
 
     if (existing) {

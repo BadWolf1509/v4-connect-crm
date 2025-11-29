@@ -7,7 +7,7 @@ export default auth((req) => {
   const { nextUrl } = req;
   const isAuthenticated = !!req.auth;
   const isPublicRoute = publicRoutes.some(
-    (route) => nextUrl.pathname === route || nextUrl.pathname.startsWith('/api/auth')
+    (route) => nextUrl.pathname === route || nextUrl.pathname.startsWith('/api/auth'),
   );
 
   // Redirect authenticated users from auth pages to dashboard

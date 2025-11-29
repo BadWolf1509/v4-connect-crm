@@ -125,7 +125,7 @@ export function formatBytes(bytes: number, decimals = 2): string {
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`;
 }
 
 // ============ Object Utils ============
@@ -182,7 +182,7 @@ export async function retry<T>(
     } catch (error) {
       lastError = error as Error;
       if (i < attempts - 1) {
-        await sleep(delay * Math.pow(backoff, i));
+        await sleep(delay * backoff ** i);
       }
     }
   }

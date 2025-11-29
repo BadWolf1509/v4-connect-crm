@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Plus } from 'lucide-react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, ChevronRight } from 'lucide-react-native';
 
 interface Deal {
   id: string;
@@ -30,17 +30,13 @@ const stages: Stage[] = [
     id: '2',
     name: 'Qualificação',
     color: '#F59E0B',
-    deals: [
-      { id: 'd3', title: 'E-commerce', value: 25000, contact: 'Pedro' },
-    ],
+    deals: [{ id: 'd3', title: 'E-commerce', value: 25000, contact: 'Pedro' }],
   },
   {
     id: '3',
     name: 'Proposta',
     color: '#8B5CF6',
-    deals: [
-      { id: 'd4', title: 'Sistema ERP', value: 50000, contact: 'Ana' },
-    ],
+    deals: [{ id: 'd4', title: 'Sistema ERP', value: 50000, contact: 'Ana' }],
   },
   {
     id: '4',
@@ -52,9 +48,7 @@ const stages: Stage[] = [
     id: '5',
     name: 'Fechado',
     color: '#10B981',
-    deals: [
-      { id: 'd5', title: 'Landing Page', value: 3000, contact: 'Carlos' },
-    ],
+    deals: [{ id: 'd5', title: 'Landing Page', value: 3000, contact: 'Carlos' }],
   },
 ];
 
@@ -86,10 +80,7 @@ export default function CRMScreen() {
         contentContainerStyle={{ padding: 16 }}
       >
         {stages.map((stage) => (
-          <View
-            key={stage.id}
-            className="w-72 mr-4 rounded-xl bg-gray-900 border border-gray-800"
-          >
+          <View key={stage.id} className="w-72 mr-4 rounded-xl bg-gray-900 border border-gray-800">
             {/* Stage Header */}
             <View className="flex-row items-center p-3 border-b border-gray-800">
               <View
@@ -103,10 +94,7 @@ export default function CRMScreen() {
             {/* Deals */}
             <ScrollView className="max-h-96 p-2">
               {stage.deals.map((deal) => (
-                <TouchableOpacity
-                  key={deal.id}
-                  className="p-3 mb-2 rounded-lg bg-gray-800"
-                >
+                <TouchableOpacity key={deal.id} className="p-3 mb-2 rounded-lg bg-gray-800">
                   <Text className="font-medium text-white">{deal.title}</Text>
                   <View className="flex-row items-center justify-between mt-2">
                     <Text className="text-sm text-gray-400">{deal.contact}</Text>

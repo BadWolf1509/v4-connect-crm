@@ -1,11 +1,8 @@
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
+import type { AppType, AuthContext } from '../types/app';
 
-export interface AuthContext {
-  userId: string;
-  tenantId: string;
-  role: string;
-}
+export type { AuthContext, AppType };
 
 export const requireAuth = createMiddleware<{
   Variables: {

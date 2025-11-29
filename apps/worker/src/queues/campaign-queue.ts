@@ -1,4 +1,4 @@
-import { Queue, Worker, Job } from 'bullmq';
+import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -49,7 +49,7 @@ export const campaignWorker = new Worker<CampaignJob | SendCampaignMessageJob>(
   {
     connection,
     concurrency: 5,
-  }
+  },
 );
 
 async function startCampaign(data: CampaignJob) {
@@ -62,7 +62,7 @@ async function startCampaign(data: CampaignJob) {
   // TODO: Queue individual messages with rate limiting
 
   // Example: Queue messages for each contact
-  const contacts = []; // TODO: Get from database
+  const contacts: Array<{ id: string; name: string }> = []; // TODO: Get from database
 
   for (const contact of contacts) {
     await campaignQueue.add(
@@ -78,7 +78,7 @@ async function startCampaign(data: CampaignJob) {
       },
       {
         delay: Math.random() * 60000, // Random delay up to 1 minute
-      }
+      },
     );
   }
 

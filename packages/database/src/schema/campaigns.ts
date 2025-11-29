@@ -1,8 +1,8 @@
-import { pgTable, text, timestamp, uuid, jsonb, pgEnum, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
+import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { channels } from './channels';
 import { contacts } from './contacts';
+import { tenants } from './tenants';
 
 export const campaignStatusEnum = pgEnum('campaign_status', [
   'draft',

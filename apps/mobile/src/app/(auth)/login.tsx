@@ -1,13 +1,13 @@
+import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
-  View,
+  KeyboardAvoidingView,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
-import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {

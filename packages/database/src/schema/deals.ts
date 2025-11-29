@@ -1,17 +1,17 @@
+import { relations } from 'drizzle-orm';
 import {
+  index,
+  integer,
+  numeric,
+  pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
-  numeric,
-  integer,
-  pgEnum,
-  index,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
-import { pipelines, stages } from './pipelines';
 import { contacts } from './contacts';
+import { pipelines, stages } from './pipelines';
+import { tenants } from './tenants';
 import { users } from './users';
 
 export const dealStatusEnum = pgEnum('deal_status', ['open', 'won', 'lost']);

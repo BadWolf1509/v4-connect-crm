@@ -1,10 +1,10 @@
-import { pgTable, text, timestamp, uuid, jsonb, index, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
-import { users } from './users';
-import { teams } from './teams';
+import { index, jsonb, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { channels, inboxes } from './channels';
 import { contacts } from './contacts';
+import { teams } from './teams';
+import { tenants } from './tenants';
+import { users } from './users';
 
 export const conversationStatusEnum = pgEnum('conversation_status', [
   'pending',

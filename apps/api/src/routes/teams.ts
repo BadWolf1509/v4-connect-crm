@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { teamsService } from '../services/teams.service';
 
-const teamsRoutes = new Hono();
+const teamsRoutes = new Hono<AppType>();
 
 teamsRoutes.use('*', requireAuth);
 
@@ -106,25 +106,21 @@ teamsRoutes.get('/:id/members', async (c) => {
 });
 
 // Add member to team
-teamsRoutes.post(
-  '/:id/members',
-  zValidator('json', addMemberSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { userId } = c.req.valid('json');
+teamsRoutes.post('/:id/members', zValidator('json', addMemberSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { userId } = c.req.valid('json');
 
-    // Verify team exists
-    const team = await teamsService.findById(id, auth.tenantId);
-    if (!team) {
-      throw new HTTPException(404, { message: 'Team not found' });
-    }
-
-    const membership = await teamsService.addMember(id, userId);
-
-    return c.json(membership, 201);
+  // Verify team exists
+  const team = await teamsService.findById(id, auth.tenantId);
+  if (!team) {
+    throw new HTTPException(404, { message: 'Team not found' });
   }
-);
+
+  const membership = await teamsService.addMember(id, userId);
+
+  return c.json(membership, 201);
+});
 
 // Remove member from team
 teamsRoutes.delete('/:id/members/:userId', async (c) => {

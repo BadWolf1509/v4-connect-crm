@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { inboxes, channels } = schema;
@@ -90,10 +90,7 @@ export const inboxesService = {
   async create(data: CreateInboxData) {
     // If this is the default inbox, unset other defaults
     if (data.isDefault) {
-      await db
-        .update(inboxes)
-        .set({ isDefault: false })
-        .where(eq(inboxes.tenantId, data.tenantId));
+      await db.update(inboxes).set({ isDefault: false }).where(eq(inboxes.tenantId, data.tenantId));
     }
 
     const result = await db
@@ -112,10 +109,7 @@ export const inboxesService = {
   async update(id: string, tenantId: string, data: UpdateInboxData) {
     // If setting as default, unset other defaults first
     if (data.isDefault) {
-      await db
-        .update(inboxes)
-        .set({ isDefault: false })
-        .where(eq(inboxes.tenantId, tenantId));
+      await db.update(inboxes).set({ isDefault: false }).where(eq(inboxes.tenantId, tenantId));
     }
 
     const result = await db

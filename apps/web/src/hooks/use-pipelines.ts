@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type Pipeline, type Deal } from '@/lib/api-client';
+import { type Deal, type Pipeline, apiClient } from '@/lib/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface PipelinesResponse {
   pipelines: Pipeline[];
@@ -45,8 +45,10 @@ export function useCreatePipeline() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; stages?: Array<{ name: string; color?: string; order: number }> }) =>
-      apiClient.post<Pipeline>('/pipelines', data),
+    mutationFn: (data: {
+      name: string;
+      stages?: Array<{ name: string; color?: string; order: number }>;
+    }) => apiClient.post<Pipeline>('/pipelines', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipelines'] });
     },

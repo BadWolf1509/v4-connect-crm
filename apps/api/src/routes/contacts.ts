@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { contactsService } from '../services/contacts.service';
 
-const contactsRoutes = new Hono();
+const contactsRoutes = new Hono<AppType>();
 
 contactsRoutes.use('*', requireAuth);
 
@@ -30,8 +30,8 @@ contactsRoutes.get('/', async (c) => {
     tenantId: auth.tenantId,
     search,
     tag,
-    page: parseInt(page),
-    limit: parseInt(limit),
+    page: Number.parseInt(page),
+    limit: Number.parseInt(limit),
   });
 
   return c.json(result);

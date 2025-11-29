@@ -1,7 +1,7 @@
-import { pgTable, text, timestamp, uuid, jsonb, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { channels } from './channels';
+import { tenants } from './tenants';
 
 export const chatbots = pgTable('chatbots', {
   id: uuid('id').primaryKey().defaultRandom(),

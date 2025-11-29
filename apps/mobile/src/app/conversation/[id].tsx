@@ -1,25 +1,25 @@
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
-  View,
-  Text,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
-import {
-  ChevronLeft,
-  Phone,
-  MoreVertical,
-  Send,
-  Paperclip,
-  Mic,
   Check,
   CheckCheck,
+  ChevronLeft,
+  Mic,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Send,
 } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Message {
   id: string;
@@ -39,7 +39,8 @@ const messages: Message[] = [
   },
   {
     id: '2',
-    content: 'Olá! Tudo ótimo, e com você? O produto X está disponível com entrega em até 3 dias úteis.',
+    content:
+      'Olá! Tudo ótimo, e com você? O produto X está disponível com entrega em até 3 dias úteis.',
     sender: 'user',
     timestamp: '10:28',
     status: 'read',
@@ -61,15 +62,11 @@ const messages: Message[] = [
 ];
 
 export default function ConversationScreen() {
-  const { id } = useLocalSearchParams();
+  const { id: _conversationId } = useLocalSearchParams();
   const [messageInput, setMessageInput] = useState('');
 
   const renderMessage = ({ item }: { item: Message }) => (
-    <View
-      className={`max-w-[80%] mb-2 ${
-        item.sender === 'user' ? 'self-end' : 'self-start'
-      }`}
-    >
+    <View className={`max-w-[80%] mb-2 ${item.sender === 'user' ? 'self-end' : 'self-start'}`}>
       <View
         className={`px-4 py-2 rounded-2xl ${
           item.sender === 'user' ? 'bg-v4-red-500' : 'bg-gray-800'
@@ -77,11 +74,7 @@ export default function ConversationScreen() {
       >
         <Text className="text-white">{item.content}</Text>
         <View className="flex-row items-center justify-end mt-1">
-          <Text
-            className={`text-xs ${
-              item.sender === 'user' ? 'text-white/70' : 'text-gray-500'
-            }`}
-          >
+          <Text className={`text-xs ${item.sender === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
             {item.timestamp}
           </Text>
           {item.sender === 'user' && (

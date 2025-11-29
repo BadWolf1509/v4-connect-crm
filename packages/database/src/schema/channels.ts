@@ -1,5 +1,5 @@
-import { pgTable, text, timestamp, boolean, uuid, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 
 export const channelTypeEnum = pgEnum('channel_type', [

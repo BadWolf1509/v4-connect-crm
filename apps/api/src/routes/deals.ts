@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { dealsService } from '../services/deals.service';
 
-const dealsRoutes = new Hono();
+const dealsRoutes = new Hono<AppType>();
 
 dealsRoutes.use('*', requireAuth);
 
@@ -48,8 +48,7 @@ const createActivitySchema = z.object({
 // List deals
 dealsRoutes.get('/', async (c) => {
   const auth = c.get('auth');
-  const { pipelineId, stageId, assigneeId, status, page = '1', limit = '50' } =
-    c.req.query();
+  const { pipelineId, stageId, assigneeId, status, page = '1', limit = '50' } = c.req.query();
 
   const result = await dealsService.findAll({
     tenantId: auth.tenantId,
@@ -57,8 +56,8 @@ dealsRoutes.get('/', async (c) => {
     stageId,
     assigneeId,
     status: status as 'open' | 'won' | 'lost' | undefined,
-    page: parseInt(page),
-    limit: parseInt(limit),
+    page: Number.parseInt(page),
+    limit: Number.parseInt(limit),
   });
 
   return c.json(result);
@@ -92,9 +91,7 @@ dealsRoutes.post('/', zValidator('json', createDealSchema), async (c) => {
     title: data.title,
     value: data.value,
     currency: data.currency,
-    expectedCloseDate: data.expectedCloseDate
-      ? new Date(data.expectedCloseDate)
-      : undefined,
+    expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate) : undefined,
   });
 
   return c.json(deal, 201);
@@ -152,23 +149,19 @@ dealsRoutes.post('/:id/won', async (c) => {
 });
 
 // Mark deal as lost
-dealsRoutes.post(
-  '/:id/lost',
-  zValidator('json', lostReasonSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { reason } = c.req.valid('json');
+dealsRoutes.post('/:id/lost', zValidator('json', lostReasonSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { reason } = c.req.valid('json');
 
-    const deal = await dealsService.markAsLost(id, auth.tenantId, reason);
+  const deal = await dealsService.markAsLost(id, auth.tenantId, reason);
 
-    if (!deal) {
-      throw new HTTPException(404, { message: 'Deal not found' });
-    }
-
-    return c.json(deal);
+  if (!deal) {
+    throw new HTTPException(404, { message: 'Deal not found' });
   }
-);
+
+  return c.json(deal);
+});
 
 // Reopen deal
 dealsRoutes.post('/:id/reopen', async (c) => {
@@ -215,32 +208,28 @@ dealsRoutes.get('/:id/activities', async (c) => {
 });
 
 // Add activity to deal
-dealsRoutes.post(
-  '/:id/activities',
-  zValidator('json', createActivitySchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const data = c.req.valid('json');
+dealsRoutes.post('/:id/activities', zValidator('json', createActivitySchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
 
-    // Verify deal exists
-    const deal = await dealsService.findById(id, auth.tenantId);
-    if (!deal) {
-      throw new HTTPException(404, { message: 'Deal not found' });
-    }
-
-    const activity = await dealsService.createActivity({
-      dealId: id,
-      userId: auth.userId,
-      type: data.type,
-      title: data.title,
-      description: data.description,
-      dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
-    });
-
-    return c.json(activity, 201);
+  // Verify deal exists
+  const deal = await dealsService.findById(id, auth.tenantId);
+  if (!deal) {
+    throw new HTTPException(404, { message: 'Deal not found' });
   }
-);
+
+  const activity = await dealsService.createActivity({
+    dealId: id,
+    userId: auth.userId,
+    type: data.type,
+    title: data.title,
+    description: data.description,
+    dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
+  });
+
+  return c.json(activity, 201);
+});
 
 // Complete activity
 dealsRoutes.post('/:id/activities/:activityId/complete', async (c) => {

@@ -1,10 +1,10 @@
 'use client';
 
+import { authApi } from '@/lib/api-client';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { authApi } from '@/lib/api-client';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -55,9 +55,7 @@ export default function RegisterPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-500">
-          {error}
-        </div>
+        <div className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-500">{error}</div>
       )}
 
       <form onSubmit={onSubmit} className="space-y-4">

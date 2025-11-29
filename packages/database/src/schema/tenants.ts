@@ -1,9 +1,12 @@
-import { pgTable, text, timestamp, jsonb, uuid } from 'drizzle-orm/pg-core';
+import { jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
+export const planEnum = pgEnum('plan_type', ['free', 'starter', 'pro', 'enterprise']);
 
 export const tenants = pgTable('tenants', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  plan: planEnum('plan').notNull().default('free'),
   logoUrl: text('logo_url'),
   settings: jsonb('settings')
     .notNull()

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MessageSquare, Users, Kanban, Settings } from 'lucide-react-native';
+import { Kanban, MessageSquare, Settings, Users } from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
@@ -25,9 +25,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Inbox',
-          tabBarIcon: ({ color, size }) => (
-            <MessageSquare size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -48,9 +46,7 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Config',
-          tabBarIcon: ({ color, size }) => (
-            <Settings size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
         }}
       />
     </Tabs>

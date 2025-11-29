@@ -1,6 +1,5 @@
-import { eq, and, desc, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
-import { conversationsService } from './conversations.service';
 
 const { messages, conversations } = schema;
 
@@ -69,8 +68,8 @@ export const messagesService = {
         and(
           eq(messages.id, id),
           eq(messages.tenantId, tenantId),
-          sql`${messages.deletedAt} IS NULL`
-        )
+          sql`${messages.deletedAt} IS NULL`,
+        ),
       )
       .limit(1);
 
@@ -81,12 +80,7 @@ export const messagesService = {
     const result = await db
       .select()
       .from(messages)
-      .where(
-        and(
-          eq(messages.externalId, externalId),
-          eq(messages.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(messages.externalId, externalId), eq(messages.tenantId, tenantId)))
       .limit(1);
 
     return result[0] || null;
@@ -135,7 +129,11 @@ export const messagesService = {
     return result[0] || null;
   },
 
-  async updateStatus(id: string, tenantId: string, status: 'sent' | 'delivered' | 'read' | 'failed') {
+  async updateStatus(
+    id: string,
+    tenantId: string,
+    status: 'sent' | 'delivered' | 'read' | 'failed',
+  ) {
     return this.update(id, tenantId, { status });
   },
 
@@ -175,8 +173,8 @@ export const messagesService = {
           eq(messages.tenantId, tenantId),
           eq(messages.senderType, 'contact'),
           sql`${messages.status} != 'read'`,
-          sql`${messages.deletedAt} IS NULL`
-        )
+          sql`${messages.deletedAt} IS NULL`,
+        ),
       );
 
     return Number(result[0]?.count || 0);
@@ -194,8 +192,8 @@ export const messagesService = {
           eq(messages.conversationId, conversationId),
           eq(messages.tenantId, tenantId),
           eq(messages.senderType, 'contact'),
-          sql`${messages.status} != 'read'`
-        )
+          sql`${messages.status} != 'read'`,
+        ),
       );
   },
 };

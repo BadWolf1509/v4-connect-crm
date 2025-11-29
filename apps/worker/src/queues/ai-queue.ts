@@ -1,4 +1,4 @@
-import { Queue, Worker, Job } from 'bullmq';
+import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -67,7 +67,7 @@ export const aiWorker = new Worker<AIJob>(
   {
     connection,
     concurrency: 3, // Limit concurrent AI calls
-  }
+  },
 );
 
 async function transcribeAudio(data: TranscriptionJob) {
@@ -109,11 +109,7 @@ async function generateSuggestion(data: SuggestionJob) {
   // });
 
   return {
-    suggestions: [
-      'Sugestão de resposta 1',
-      'Sugestão de resposta 2',
-      'Sugestão de resposta 3',
-    ],
+    suggestions: ['Sugestão de resposta 1', 'Sugestão de resposta 2', 'Sugestão de resposta 3'],
   };
 }
 

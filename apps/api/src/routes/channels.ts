@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { channelsService } from '../services/channels.service';
 
-const channelsRoutes = new Hono();
+const channelsRoutes = new Hono<AppType>();
 
 channelsRoutes.use('*', requireAuth);
 
@@ -69,23 +69,19 @@ channelsRoutes.post('/', zValidator('json', createChannelSchema), async (c) => {
 });
 
 // Update channel
-channelsRoutes.patch(
-  '/:id',
-  zValidator('json', updateChannelSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const data = c.req.valid('json');
+channelsRoutes.patch('/:id', zValidator('json', updateChannelSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
 
-    const channel = await channelsService.update(id, auth.tenantId, data);
+  const channel = await channelsService.update(id, auth.tenantId, data);
 
-    if (!channel) {
-      throw new HTTPException(404, { message: 'Channel not found' });
-    }
-
-    return c.json(channel);
+  if (!channel) {
+    throw new HTTPException(404, { message: 'Channel not found' });
   }
-);
+
+  return c.json(channel);
+});
 
 // Connect channel
 channelsRoutes.post('/:id/connect', async (c) => {

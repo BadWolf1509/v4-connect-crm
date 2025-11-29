@@ -6,17 +6,18 @@ import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { secureHeaders } from 'hono/secure-headers';
 
+import { errorHandler } from './middleware/error-handler';
 import { authRoutes } from './routes/auth';
 import { channelsRoutes } from './routes/channels';
 import { contactsRoutes } from './routes/contacts';
 import { conversationsRoutes } from './routes/conversations';
+import { dealsRoutes } from './routes/deals';
 import { inboxesRoutes } from './routes/inboxes';
 import { messagesRoutes } from './routes/messages';
 import { pipelinesRoutes } from './routes/pipelines';
-import { dealsRoutes } from './routes/deals';
 import { teamsRoutes } from './routes/teams';
 import { webhooksRoutes } from './routes/webhooks';
-import { errorHandler } from './middleware/error-handler';
+import { whatsappRoutes } from './routes/whatsapp';
 
 const app = new Hono();
 
@@ -29,7 +30,7 @@ app.use(
   cors({
     origin: ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
-  })
+  }),
 );
 
 // Error handling
@@ -57,6 +58,7 @@ api.route('/pipelines', pipelinesRoutes);
 api.route('/deals', dealsRoutes);
 api.route('/teams', teamsRoutes);
 api.route('/webhooks', webhooksRoutes);
+api.route('/whatsapp', whatsappRoutes);
 
 // Mount API under /api/v1
 app.route('/api/v1', api);
@@ -68,11 +70,11 @@ app.notFound((c) => {
       error: 'Not Found',
       message: `Route ${c.req.method} ${c.req.path} not found`,
     },
-    404
+    404,
   );
 });
 
-const port = parseInt(process.env.PORT || '3002', 10);
+const port = Number.parseInt(process.env.PORT || '3002', 10);
 
 console.log(`🚀 V4 Connect API running on http://localhost:${port}`);
 

@@ -1,7 +1,7 @@
 'use client';
 
+import { MessageSquare, TrendingUp, Users, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { MessageSquare, Users, TrendingUp, Zap } from 'lucide-react';
 
 export function DashboardContent() {
   return (
@@ -30,12 +30,7 @@ export function DashboardContent() {
           change="+15%"
           icon={<TrendingUp className="h-5 w-5" />}
         />
-        <StatCard
-          title="Automações"
-          value="5"
-          change="0%"
-          icon={<Zap className="h-5 w-5" />}
-        />
+        <StatCard title="Automações" value="5" change="0%" icon={<Zap className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -43,10 +38,7 @@ export function DashboardContent() {
           <h2 className="mb-4 text-lg font-semibold text-white">Conversas Recentes</h2>
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 rounded-lg bg-gray-800/50 p-3"
-              >
+              <div key={i} className="flex items-center gap-3 rounded-lg bg-gray-800/50 p-3">
                 <div className="h-10 w-10 rounded-full bg-gray-700" />
                 <div className="flex-1">
                   <p className="font-medium text-white">Cliente {i}</p>
@@ -104,9 +96,7 @@ function StatCard({
     <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
       <div className="flex items-center justify-between">
         <div className="rounded-lg bg-v4-red-500/10 p-2 text-v4-red-500">{icon}</div>
-        <span
-          className={`text-sm font-medium ${isPositive ? 'text-green-500' : 'text-gray-500'}`}
-        >
+        <span className={`text-sm font-medium ${isPositive ? 'text-green-500' : 'text-gray-500'}`}>
           {change}
         </span>
       </div>

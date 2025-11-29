@@ -80,7 +80,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string;
         session.user.tenantId = token.tenantId as string;
         session.user.avatarUrl = token.avatarUrl as string | undefined;
-        session.user.tenant = token.tenant as { id: string; name: string; slug: string } | undefined;
+        session.user.tenant = token.tenant as
+          | { id: string; name: string; slug: string }
+          | undefined;
       }
       return session;
     },

@@ -1,7 +1,7 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Plus } from 'lucide-react-native';
+import { Plus, Search } from 'lucide-react-native';
 import { useState } from 'react';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Contact {
   id: string;
@@ -49,10 +49,7 @@ export default function ContactsScreen() {
         <Text className="text-sm text-gray-400">{item.phone}</Text>
         <View className="flex-row mt-1">
           {item.tags.map((tag) => (
-            <View
-              key={tag}
-              className="px-2 py-0.5 rounded-full bg-gray-800 mr-1"
-            >
+            <View key={tag} className="px-2 py-0.5 rounded-full bg-gray-800 mr-1">
               <Text className="text-xs text-gray-400">{tag}</Text>
             </View>
           ))}

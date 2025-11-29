@@ -1,10 +1,11 @@
 'use client';
 
+import { Eye, EyeOff } from 'lucide-react';
 import type { Route } from 'next';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { signIn } from 'next-auth/react';
 
 function LoginForm() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function LoginForm() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,7 +40,7 @@ function LoginForm() {
 
       router.push(callbackUrl as Route);
       router.refresh();
-    } catch (err) {
+    } catch (_err) {
       setError('Ocorreu um erro. Tente novamente.');
       setIsLoading(false);
     }
@@ -82,14 +84,24 @@ function LoginForm() {
           <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-300">
             Senha
           </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="••••••••"
-            required
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none focus:ring-1 focus:ring-v4-red-500"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              required
+              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 pr-12 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none focus:ring-1 focus:ring-v4-red-500"
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         <button
@@ -111,11 +123,12 @@ function LoginForm() {
       </div>
 
       <button
+        type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
         className="w-full flex items-center justify-center gap-3 rounded-lg border border-gray-700 bg-gray-800 py-3 font-medium text-white transition hover:bg-gray-700 disabled:opacity-50"
       >
-        <svg className="h-5 w-5" viewBox="0 0 24 24">
+        <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="currentColor"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

@@ -16,7 +16,7 @@ export function errorHandler(err: Error, c: Context) {
           message: e.message,
         })),
       },
-      400
+      400,
     );
   }
 
@@ -24,10 +24,10 @@ export function errorHandler(err: Error, c: Context) {
   if (err instanceof HTTPException) {
     return c.json(
       {
-        error: err.message,
-        message: err.cause?.toString() || 'An error occurred',
+        error: 'HTTP Error',
+        message: err.message,
       },
-      err.status
+      err.status,
     );
   }
 
@@ -35,10 +35,8 @@ export function errorHandler(err: Error, c: Context) {
   return c.json(
     {
       error: 'Internal Server Error',
-      message: process.env.NODE_ENV === 'production'
-        ? 'An unexpected error occurred'
-        : err.message,
+      message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
     },
-    500
+    500,
   );
 }

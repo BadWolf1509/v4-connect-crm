@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { pipelines, stages, deals } = schema;
@@ -61,7 +61,7 @@ export const pipelinesService = {
           ...pipeline,
           stages: stagesData,
         };
-      })
+      }),
     );
 
     return { pipelines: pipelinesWithStages };
@@ -132,7 +132,7 @@ export const pipelinesService = {
           name: stage.name,
           color: stage.color || '#E50914',
           order: stage.order,
-        }))
+        })),
       );
     }
 
@@ -142,10 +142,7 @@ export const pipelinesService = {
   async update(id: string, tenantId: string, data: UpdatePipelineData) {
     // If setting as default, unset other defaults first
     if (data.isDefault) {
-      await db
-        .update(pipelines)
-        .set({ isDefault: false })
-        .where(eq(pipelines.tenantId, tenantId));
+      await db.update(pipelines).set({ isDefault: false }).where(eq(pipelines.tenantId, tenantId));
     }
 
     const result = await db
@@ -200,10 +197,7 @@ export const pipelinesService = {
   },
 
   async deleteStage(stageId: string) {
-    const result = await db
-      .delete(stages)
-      .where(eq(stages.id, stageId))
-      .returning();
+    const result = await db.delete(stages).where(eq(stages.id, stageId)).returning();
 
     return result[0] || null;
   },
@@ -215,19 +209,15 @@ export const pipelinesService = {
         db
           .update(stages)
           .set({ order: index, updatedAt: new Date() })
-          .where(and(eq(stages.id, stageId), eq(stages.pipelineId, pipelineId)))
-      )
+          .where(and(eq(stages.id, stageId), eq(stages.pipelineId, pipelineId))),
+      ),
     );
 
     return true;
   },
 
   async getStage(stageId: string) {
-    const result = await db
-      .select()
-      .from(stages)
-      .where(eq(stages.id, stageId))
-      .limit(1);
+    const result = await db.select().from(stages).where(eq(stages.id, stageId)).limit(1);
 
     return result[0] || null;
   },

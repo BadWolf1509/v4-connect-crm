@@ -1,4 +1,4 @@
-import { Queue, Worker, Job } from 'bullmq';
+import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -46,10 +46,10 @@ export const webhookWorker = new Worker<WebhookJob>(
   {
     connection,
     concurrency: 20,
-  }
+  },
 );
 
-async function processWhatsAppOfficial(payload: any, signature?: string) {
+async function processWhatsAppOfficial(payload: any, _signature?: string) {
   // TODO: Validate webhook signature
   // const isValid = validateWhatsAppSignature(payload, signature);
 
@@ -80,7 +80,7 @@ async function processEvolutionAPI(payload: any) {
   const event = payload.event;
 
   switch (event) {
-    case 'messages.upsert':
+    case 'messages.upsert': {
       // New message
       const messages = payload.data;
       for (const msg of messages) {
@@ -88,8 +88,9 @@ async function processEvolutionAPI(payload: any) {
         // TODO: Process message
       }
       break;
+    }
 
-    case 'messages.update':
+    case 'messages.update': {
       // Status update
       const updates = payload.data;
       for (const update of updates) {
@@ -97,6 +98,7 @@ async function processEvolutionAPI(payload: any) {
         // TODO: Update message status
       }
       break;
+    }
 
     case 'connection.update':
       // Connection status changed
@@ -114,7 +116,7 @@ async function processEvolutionAPI(payload: any) {
   return { processed: true };
 }
 
-async function processInstagram(payload: any, signature?: string) {
+async function processInstagram(payload: any, _signature?: string) {
   // TODO: Validate signature
   // TODO: Process Instagram DMs
 
@@ -129,7 +131,7 @@ async function processInstagram(payload: any, signature?: string) {
   return { processed: true };
 }
 
-async function processMessenger(payload: any, signature?: string) {
+async function processMessenger(payload: any, _signature?: string) {
   // TODO: Validate signature
   // TODO: Process Messenger messages
 

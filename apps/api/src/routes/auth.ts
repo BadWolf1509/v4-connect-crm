@@ -1,13 +1,13 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import * as bcrypt from 'bcryptjs';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import bcrypt from 'bcryptjs';
-import { usersService } from '../services/users.service';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { tenantsService } from '../services/tenants.service';
-import { requireAuth } from '../middleware/auth';
+import { usersService } from '../services/users.service';
 
-const authRoutes = new Hono();
+const authRoutes = new Hono<AppType>();
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -112,7 +112,7 @@ authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
         },
       },
     },
-    201
+    201,
   );
 });
 

@@ -1,6 +1,7 @@
-import { pgTable, text, timestamp, uuid, jsonb, index, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { conversations } from './conversations';
+import { tenants } from './tenants';
 import { users } from './users';
 
 export const messageTypeEnum = pgEnum('message_type', [
@@ -25,25 +26,35 @@ export const messageStatusEnum = pgEnum('message_status', [
   'failed',
 ]);
 
+export const senderTypeEnum = pgEnum('sender_type', ['user', 'contact', 'bot']);
+
 export const messages = pgTable(
   'messages',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
     conversationId: uuid('conversation_id')
       .notNull()
       .references(() => conversations.id, { onDelete: 'cascade' }),
     senderId: uuid('sender_id').references(() => users.id, { onDelete: 'set null' }),
+    senderType: senderTypeEnum('sender_type').notNull().default('contact'),
     type: messageTypeEnum('type').notNull().default('text'),
-    direction: messageDirectionEnum('direction').notNull(),
-    content: text('content').notNull(),
+    direction: messageDirectionEnum('direction').notNull().default('inbound'),
+    content: text('content'),
+    mediaUrl: text('media_url'),
+    mediaType: text('media_type'),
     metadata: jsonb('metadata').notNull().default({}),
     status: messageStatusEnum('status').notNull().default('pending'),
     externalId: text('external_id'),
     errorMessage: text('error_message'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => ({
+    tenantIdx: index('messages_tenant_idx').on(t.tenantId),
     conversationIdx: index('messages_conversation_idx').on(t.conversationId),
     createdAtIdx: index('messages_created_at_idx').on(t.createdAt),
     externalIdx: index('messages_external_idx').on(t.externalId),

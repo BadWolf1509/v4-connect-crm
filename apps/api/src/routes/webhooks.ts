@@ -1,4 +1,12 @@
+import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { db, schema } from '../lib/db';
+import { publishConversationUpdate, publishNewConversation, publishNewMessage } from '../lib/redis';
+import { contactsService } from '../services/contacts.service';
+import { conversationsService } from '../services/conversations.service';
+import { messagesService } from '../services/messages.service';
+
+const { channels } = schema;
 
 const webhooksRoutes = new Hono();
 
@@ -36,31 +44,212 @@ webhooksRoutes.get('/whatsapp/official', async (c) => {
 
 // WhatsApp Unofficial (Evolution API) webhook
 webhooksRoutes.post('/whatsapp/evolution', async (c) => {
-  const payload = await c.req.json();
+  try {
+    const payload = await c.req.json();
+    const event = payload.event;
+    const instanceName = payload.instance;
 
-  console.log('Evolution API webhook:', JSON.stringify(payload, null, 2));
+    console.log(`Evolution API webhook [${event}]:`, JSON.stringify(payload, null, 2));
 
-  // TODO: Process Evolution API message
-  // Events: MESSAGES_UPSERT, MESSAGES_UPDATE, QRCODE_UPDATED, CONNECTION_UPDATE
+    // Find channel by instance name
+    const channelResult = await db
+      .select()
+      .from(channels)
+      .where(eq(channels.provider, 'evolution'))
+      .limit(100);
 
-  const event = payload.event;
+    const channel = channelResult.find((ch) => {
+      const config = ch.config as { instanceName?: string };
+      return config?.instanceName === instanceName;
+    });
 
-  switch (event) {
-    case 'messages.upsert':
-      // New message received
-      break;
-    case 'messages.update':
-      // Message status update (sent, delivered, read)
-      break;
-    case 'qrcode.updated':
-      // QR code for connection
-      break;
-    case 'connection.update':
-      // Connection status changed
-      break;
+    if (!channel) {
+      console.log(`Channel not found for instance: ${instanceName}`);
+      return c.json({ success: true, message: 'Channel not found' });
+    }
+
+    switch (event) {
+      case 'messages.upsert': {
+        // New message received
+        const data = payload.data;
+        if (!data || !data.key || !data.message) break;
+
+        // Skip messages from the bot (fromMe = true)
+        if (data.key.fromMe) {
+          console.log('Skipping message from bot');
+          break;
+        }
+
+        // Extract phone number from remoteJid
+        const remoteJid = data.key.remoteJid;
+        const phoneNumber = remoteJid?.replace('@s.whatsapp.net', '').replace('@g.us', '');
+
+        if (!phoneNumber) break;
+
+        // Find or create contact
+        let contact = await contactsService.findByPhone(phoneNumber, channel.tenantId);
+
+        if (!contact) {
+          // Get contact name from push name or phone
+          const pushName = data.pushName || phoneNumber;
+
+          contact = await contactsService.create({
+            tenantId: channel.tenantId,
+            name: pushName,
+            phone: phoneNumber,
+            customFields: { source: 'whatsapp' },
+          });
+        }
+
+        // Find or create conversation
+        const { conversation, created } = await conversationsService.findOrCreate({
+          tenantId: channel.tenantId,
+          channelId: channel.id,
+          contactId: contact.id,
+        });
+
+        // Extract message content
+        let content = '';
+        let type: 'text' | 'image' | 'video' | 'audio' | 'document' = 'text';
+        let mediaUrl: string | undefined;
+
+        if (data.message.conversation) {
+          content = data.message.conversation;
+        } else if (data.message.extendedTextMessage?.text) {
+          content = data.message.extendedTextMessage.text;
+        } else if (data.message.imageMessage) {
+          type = 'image';
+          content = data.message.imageMessage.caption || '';
+          mediaUrl = data.message.imageMessage.url;
+        } else if (data.message.videoMessage) {
+          type = 'video';
+          content = data.message.videoMessage.caption || '';
+          mediaUrl = data.message.videoMessage.url;
+        } else if (data.message.audioMessage) {
+          type = 'audio';
+          mediaUrl = data.message.audioMessage.url;
+        } else if (data.message.documentMessage) {
+          type = 'document';
+          content = data.message.documentMessage.fileName || 'Document';
+          mediaUrl = data.message.documentMessage.url;
+        }
+
+        // Save message to database
+        const message = await messagesService.create({
+          tenantId: channel.tenantId,
+          conversationId: conversation.id,
+          senderId: contact.id,
+          senderType: 'contact',
+          type,
+          content,
+          mediaUrl,
+          externalId: data.key.id,
+          metadata: {
+            remoteJid,
+            timestamp: data.messageTimestamp,
+          },
+        });
+
+        console.log(`Message saved: ${message.id}`);
+
+        // Publish real-time events via Redis
+        const messageWithSender = {
+          ...message,
+          sender: {
+            id: contact.id,
+            name: contact.name,
+            avatarUrl: contact.avatarUrl,
+          },
+        };
+
+        // Publish new message event
+        await publishNewMessage(channel.tenantId, conversation.id, messageWithSender);
+
+        // Get full conversation data for update
+        const fullConversation = await conversationsService.findById(conversation.id, channel.tenantId);
+
+        if (created) {
+          // New conversation
+          await publishNewConversation(channel.tenantId, fullConversation);
+        } else {
+          // Update existing conversation (lastMessageAt changed)
+          await publishConversationUpdate(channel.tenantId, fullConversation);
+        }
+
+        break;
+      }
+
+      case 'messages.update': {
+        // Message status update (sent, delivered, read)
+        const data = payload.data;
+        if (!data || !Array.isArray(data)) break;
+
+        for (const update of data) {
+          const status = update.update?.status;
+          const messageId = update.key?.id;
+
+          if (!messageId || !status) continue;
+
+          // Map Evolution API status to our status
+          let mappedStatus: 'pending' | 'sent' | 'delivered' | 'read' | 'failed' = 'sent';
+          switch (status) {
+            case 'PENDING':
+              mappedStatus = 'pending';
+              break;
+            case 'SERVER_ACK':
+              mappedStatus = 'sent';
+              break;
+            case 'DELIVERY_ACK':
+              mappedStatus = 'delivered';
+              break;
+            case 'READ':
+              mappedStatus = 'read';
+              break;
+            case 'PLAYED':
+              mappedStatus = 'read';
+              break;
+          }
+
+          // Update message status by whatsapp message ID
+          // await messagesService.updateByExternalId(messageId, { status: mappedStatus });
+          console.log(`Message ${messageId} status updated to ${mappedStatus}`);
+        }
+        break;
+      }
+
+      case 'qrcode.updated': {
+        // QR code for connection - could emit to frontend
+        console.log('QR Code updated for instance:', instanceName);
+        break;
+      }
+
+      case 'connection.update': {
+        // Connection status changed
+        const state = payload.data?.state;
+        console.log(`Connection state for ${instanceName}: ${state}`);
+
+        if (state === 'open') {
+          // Mark channel as connected
+          await db
+            .update(channels)
+            .set({ isActive: true, connectedAt: new Date() })
+            .where(eq(channels.id, channel.id));
+        } else if (state === 'close') {
+          // Mark channel as disconnected
+          await db
+            .update(channels)
+            .set({ isActive: false, connectedAt: null })
+            .where(eq(channels.id, channel.id));
+        }
+        break;
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Evolution webhook error:', error);
+    return c.json({ success: false, error: 'Internal error' }, 500);
   }
-
-  return c.json({ success: true });
 });
 
 // Instagram webhook

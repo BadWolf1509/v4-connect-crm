@@ -1,14 +1,8 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Search, Filter } from 'lucide-react-native';
+import { Filter, Search } from 'lucide-react-native';
+import { useState } from 'react';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Conversation {
   id: string;
@@ -66,9 +60,7 @@ export default function InboxScreen() {
       {/* Avatar */}
       <View className="relative">
         <View className="w-12 h-12 rounded-full bg-gray-700 items-center justify-center">
-          <Text className="text-lg font-medium text-white">
-            {item.contact.name[0]}
-          </Text>
+          <Text className="text-lg font-medium text-white">{item.contact.name[0]}</Text>
         </View>
         <View
           className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-gray-950"

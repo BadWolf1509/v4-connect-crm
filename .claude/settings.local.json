@@ -29,7 +29,21 @@
       "Bash(git commit:*)",
       "Bash(railway:*)",
       "Bash(git restore:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(openssl rand:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm db:seed:*)",
+      "Bash(taskkill:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(echo:*)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run lint:fix:*)",
+      "Bash(npx biome check:*)",
+      "Bash(node scripts/list-tenants.mjs:*)"
     ],
     "deny": [],
     "ask": []

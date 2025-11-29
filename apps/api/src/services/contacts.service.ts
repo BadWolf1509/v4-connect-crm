@@ -1,4 +1,4 @@
-import { eq, and, ilike, desc, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { contacts } = schema;
@@ -36,14 +36,11 @@ export const contactsService = {
     const { tenantId, search, tag, page = 1, limit = 20 } = filters;
     const offset = (page - 1) * limit;
 
-    const conditions = [
-      eq(contacts.tenantId, tenantId),
-      sql`${contacts.deletedAt} IS NULL`,
-    ];
+    const conditions = [eq(contacts.tenantId, tenantId), sql`${contacts.deletedAt} IS NULL`];
 
     if (search) {
       conditions.push(
-        sql`(${contacts.name} ILIKE ${`%${search}%`} OR ${contacts.phone} ILIKE ${`%${search}%`} OR ${contacts.email} ILIKE ${`%${search}%`})`
+        sql`(${contacts.name} ILIKE ${`%${search}%`} OR ${contacts.phone} ILIKE ${`%${search}%`} OR ${contacts.email} ILIKE ${`%${search}%`})`,
       );
     }
 
@@ -86,8 +83,8 @@ export const contactsService = {
         and(
           eq(contacts.id, id),
           eq(contacts.tenantId, tenantId),
-          sql`${contacts.deletedAt} IS NULL`
-        )
+          sql`${contacts.deletedAt} IS NULL`,
+        ),
       )
       .limit(1);
 
@@ -102,8 +99,8 @@ export const contactsService = {
         and(
           eq(contacts.phone, phone),
           eq(contacts.tenantId, tenantId),
-          sql`${contacts.deletedAt} IS NULL`
-        )
+          sql`${contacts.deletedAt} IS NULL`,
+        ),
       )
       .limit(1);
 
@@ -118,8 +115,8 @@ export const contactsService = {
         and(
           eq(contacts.externalId, externalId),
           eq(contacts.tenantId, tenantId),
-          sql`${contacts.deletedAt} IS NULL`
-        )
+          sql`${contacts.deletedAt} IS NULL`,
+        ),
       )
       .limit(1);
 

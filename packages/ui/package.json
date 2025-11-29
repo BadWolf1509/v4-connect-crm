@@ -14,7 +14,8 @@
     "./dropdown-menu": "./src/components/dropdown-menu.tsx",
     "./select": "./src/components/select.tsx",
     "./tabs": "./src/components/tabs.tsx",
-    "./toast": "./src/components/toast.tsx"
+    "./toast": "./src/components/toast.tsx",
+    "./scroll-area": "./src/components/scroll-area.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.1",
+    "@v4-connect/typescript": "workspace:*",
     "react": "^19.0.0",
     "typescript": "^5.7.2"
   },

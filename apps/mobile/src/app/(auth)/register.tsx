@@ -1,14 +1,14 @@
+import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RegisterScreen() {
@@ -61,9 +61,7 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-sm font-medium text-gray-300 mb-2">
-                Nome da empresa
-              </Text>
+              <Text className="text-sm font-medium text-gray-300 mb-2">Nome da empresa</Text>
               <TextInput
                 value={company}
                 onChangeText={setCompany}

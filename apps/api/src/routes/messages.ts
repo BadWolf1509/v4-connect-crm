@@ -1,26 +1,18 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
-import { messagesService } from '../services/messages.service';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { conversationsService } from '../services/conversations.service';
+import { messagesService } from '../services/messages.service';
 
-const messagesRoutes = new Hono();
+const messagesRoutes = new Hono<AppType>();
 
 messagesRoutes.use('*', requireAuth);
 
 const sendMessageSchema = z.object({
   conversationId: z.string().uuid(),
-  type: z.enum([
-    'text',
-    'image',
-    'video',
-    'audio',
-    'document',
-    'location',
-    'template',
-  ]),
+  type: z.enum(['text', 'image', 'video', 'audio', 'document', 'location', 'template']),
   content: z.string().optional(),
   mediaUrl: z.string().url().optional(),
   mediaMimeType: z.string().optional(),
@@ -35,10 +27,7 @@ messagesRoutes.get('/conversation/:conversationId', async (c) => {
   const { cursor, limit = '50' } = c.req.query();
 
   // Verify conversation belongs to tenant
-  const conversation = await conversationsService.findById(
-    conversationId,
-    auth.tenantId
-  );
+  const conversation = await conversationsService.findById(conversationId, auth.tenantId);
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });
@@ -46,8 +35,9 @@ messagesRoutes.get('/conversation/:conversationId', async (c) => {
 
   const result = await messagesService.findByConversation({
     conversationId,
+    tenantId: auth.tenantId,
     cursor,
-    limit: parseInt(limit),
+    limit: Number.parseInt(limit),
   });
 
   return c.json(result);
@@ -59,10 +49,7 @@ messagesRoutes.post('/', zValidator('json', sendMessageSchema), async (c) => {
   const data = c.req.valid('json');
 
   // Verify conversation belongs to tenant
-  const conversation = await conversationsService.findById(
-    data.conversationId,
-    auth.tenantId
-  );
+  const conversation = await conversationsService.findById(data.conversationId, auth.tenantId);
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });
@@ -77,8 +64,7 @@ messagesRoutes.post('/', zValidator('json', sendMessageSchema), async (c) => {
     type: data.type,
     content: data.content,
     mediaUrl: data.mediaUrl,
-    mediaMimeType: data.mediaMimeType,
-    status: 'pending',
+    mediaType: data.mediaMimeType,
   });
 
   // TODO: Send via channel provider (WhatsApp API, etc.)
@@ -125,16 +111,13 @@ messagesRoutes.post('/conversation/:conversationId/read', async (c) => {
   const conversationId = c.req.param('conversationId');
 
   // Verify conversation belongs to tenant
-  const conversation = await conversationsService.findById(
-    conversationId,
-    auth.tenantId
-  );
+  const conversation = await conversationsService.findById(conversationId, auth.tenantId);
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });
   }
 
-  await messagesService.markAsRead(conversationId);
+  await messagesService.markAsRead(conversationId, auth.tenantId);
 
   return c.json({ message: 'Messages marked as read' });
 });
@@ -145,16 +128,13 @@ messagesRoutes.get('/conversation/:conversationId/unread', async (c) => {
   const conversationId = c.req.param('conversationId');
 
   // Verify conversation belongs to tenant
-  const conversation = await conversationsService.findById(
-    conversationId,
-    auth.tenantId
-  );
+  const conversation = await conversationsService.findById(conversationId, auth.tenantId);
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });
   }
 
-  const count = await messagesService.getUnreadCount(conversationId);
+  const count = await messagesService.getUnreadCount(conversationId, auth.tenantId);
 
   return c.json({ unreadCount: count });
 });
@@ -162,7 +142,7 @@ messagesRoutes.get('/conversation/:conversationId/unread', async (c) => {
 // Upload media
 messagesRoutes.post('/upload', async (c) => {
   const body = await c.req.parseBody();
-  const file = body['file'];
+  const file = body.file;
 
   if (!file || !(file instanceof File)) {
     throw new HTTPException(400, { message: 'File is required' });

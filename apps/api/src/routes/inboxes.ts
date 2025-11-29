@@ -1,12 +1,12 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
-import { inboxesService } from '../services/inboxes.service';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { channelsService } from '../services/channels.service';
+import { inboxesService } from '../services/inboxes.service';
 
-const inboxesRoutes = new Hono();
+const inboxesRoutes = new Hono<AppType>();
 
 inboxesRoutes.use('*', requireAuth);
 

@@ -1,8 +1,8 @@
 import { Redis } from 'ioredis';
-import { messageQueue, messageWorker } from './queues/message-queue';
-import { webhookQueue, webhookWorker } from './queues/webhook-queue';
-import { campaignQueue, campaignWorker } from './queues/campaign-queue';
-import { aiQueue, aiWorker } from './queues/ai-queue';
+import { aiWorker } from './queues/ai-queue';
+import { campaignWorker } from './queues/campaign-queue';
+import { messageWorker } from './queues/message-queue';
+import { webhookWorker } from './queues/webhook-queue';
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 

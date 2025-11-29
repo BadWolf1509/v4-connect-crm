@@ -1,7 +1,7 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
-const { channels, inboxes } = schema;
+const { channels, inboxes: _inboxes } = schema;
 
 export interface ChannelFilters {
   tenantId: string;
@@ -63,12 +63,7 @@ export const channelsService = {
     const result = await db
       .select()
       .from(channels)
-      .where(
-        and(
-          eq(channels.phoneNumber, phoneNumber),
-          eq(channels.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(channels.phoneNumber, phoneNumber), eq(channels.tenantId, tenantId)))
       .limit(1);
 
     return result[0] || null;

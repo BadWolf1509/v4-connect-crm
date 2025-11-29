@@ -1,5 +1,5 @@
-import { pgTable, text, timestamp, uuid, boolean, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 
 export const pipelines = pgTable('pipelines', {

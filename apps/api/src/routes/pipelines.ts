@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { requireAuth } from '../middleware/auth';
+import { z } from 'zod';
+import { type AppType, requireAuth } from '../middleware/auth';
 import { pipelinesService } from '../services/pipelines.service';
 
-const pipelinesRoutes = new Hono();
+const pipelinesRoutes = new Hono<AppType>();
 
 pipelinesRoutes.use('*', requireAuth);
 
@@ -18,7 +18,7 @@ const createPipelineSchema = z.object({
         name: z.string().min(1),
         color: z.string().optional(),
         order: z.number(),
-      })
+      }),
     )
     .optional(),
 });
@@ -82,23 +82,19 @@ pipelinesRoutes.post('/', zValidator('json', createPipelineSchema), async (c) =>
 });
 
 // Update pipeline
-pipelinesRoutes.patch(
-  '/:id',
-  zValidator('json', updatePipelineSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const data = c.req.valid('json');
+pipelinesRoutes.patch('/:id', zValidator('json', updatePipelineSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
 
-    const pipeline = await pipelinesService.update(id, auth.tenantId, data);
+  const pipeline = await pipelinesService.update(id, auth.tenantId, data);
 
-    if (!pipeline) {
-      throw new HTTPException(404, { message: 'Pipeline not found' });
-    }
-
-    return c.json(pipeline);
+  if (!pipeline) {
+    throw new HTTPException(404, { message: 'Pipeline not found' });
   }
-);
+
+  return c.json(pipeline);
+});
 
 // Delete pipeline
 pipelinesRoutes.delete('/:id', async (c) => {
@@ -115,79 +111,67 @@ pipelinesRoutes.delete('/:id', async (c) => {
 });
 
 // Reorder stages
-pipelinesRoutes.post(
-  '/:id/stages/reorder',
-  zValidator('json', reorderStagesSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const { stageIds } = c.req.valid('json');
+pipelinesRoutes.post('/:id/stages/reorder', zValidator('json', reorderStagesSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const { stageIds } = c.req.valid('json');
 
-    // Verify pipeline exists
-    const pipeline = await pipelinesService.findById(id, auth.tenantId);
-    if (!pipeline) {
-      throw new HTTPException(404, { message: 'Pipeline not found' });
-    }
-
-    await pipelinesService.reorderStages(id, stageIds);
-
-    const updatedPipeline = await pipelinesService.findById(id, auth.tenantId);
-
-    return c.json(updatedPipeline);
+  // Verify pipeline exists
+  const pipeline = await pipelinesService.findById(id, auth.tenantId);
+  if (!pipeline) {
+    throw new HTTPException(404, { message: 'Pipeline not found' });
   }
-);
+
+  await pipelinesService.reorderStages(id, stageIds);
+
+  const updatedPipeline = await pipelinesService.findById(id, auth.tenantId);
+
+  return c.json(updatedPipeline);
+});
 
 // Add stage
-pipelinesRoutes.post(
-  '/:id/stages',
-  zValidator('json', createStageSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const data = c.req.valid('json');
+pipelinesRoutes.post('/:id/stages', zValidator('json', createStageSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
 
-    // Verify pipeline exists
-    const pipeline = await pipelinesService.findById(id, auth.tenantId);
-    if (!pipeline) {
-      throw new HTTPException(404, { message: 'Pipeline not found' });
-    }
-
-    const stage = await pipelinesService.createStage({
-      pipelineId: id,
-      name: data.name,
-      color: data.color,
-      order: data.order,
-    });
-
-    return c.json(stage, 201);
+  // Verify pipeline exists
+  const pipeline = await pipelinesService.findById(id, auth.tenantId);
+  if (!pipeline) {
+    throw new HTTPException(404, { message: 'Pipeline not found' });
   }
-);
+
+  const stage = await pipelinesService.createStage({
+    pipelineId: id,
+    name: data.name,
+    color: data.color,
+    order: data.order,
+  });
+
+  return c.json(stage, 201);
+});
 
 // Update stage
-pipelinesRoutes.patch(
-  '/:id/stages/:stageId',
-  zValidator('json', updateStageSchema),
-  async (c) => {
-    const auth = c.get('auth');
-    const id = c.req.param('id');
-    const stageId = c.req.param('stageId');
-    const data = c.req.valid('json');
+pipelinesRoutes.patch('/:id/stages/:stageId', zValidator('json', updateStageSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const stageId = c.req.param('stageId');
+  const data = c.req.valid('json');
 
-    // Verify pipeline exists
-    const pipeline = await pipelinesService.findById(id, auth.tenantId);
-    if (!pipeline) {
-      throw new HTTPException(404, { message: 'Pipeline not found' });
-    }
-
-    const stage = await pipelinesService.updateStage(stageId, data);
-
-    if (!stage) {
-      throw new HTTPException(404, { message: 'Stage not found' });
-    }
-
-    return c.json(stage);
+  // Verify pipeline exists
+  const pipeline = await pipelinesService.findById(id, auth.tenantId);
+  if (!pipeline) {
+    throw new HTTPException(404, { message: 'Pipeline not found' });
   }
-);
+
+  const stage = await pipelinesService.updateStage(stageId, data);
+
+  if (!stage) {
+    throw new HTTPException(404, { message: 'Stage not found' });
+  }
+
+  return c.json(stage);
+});
 
 // Delete stage
 pipelinesRoutes.delete('/:id/stages/:stageId', async (c) => {
