@@ -1,6 +1,6 @@
 'use client';
 
-import { apiClient } from '@/lib/api-client';
+import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
@@ -38,6 +38,7 @@ interface QRCodeData {
 type ConnectionState = 'idle' | 'creating' | 'qrcode' | 'connecting' | 'connected' | 'error';
 
 export default function ChannelsPage() {
+  const { api, isAuthenticated } = useApi();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -49,15 +50,16 @@ export default function ChannelsPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const fetchChannels = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
-      const data = await apiClient.get<{ data: Channel[] }>('/channels');
+      const data = await api.get<{ data: Channel[] }>('/channels');
       setChannels(data.data || []);
     } catch (err) {
       console.error('Failed to fetch channels:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api, isAuthenticated]);
 
   useEffect(() => {
     fetchChannels();
@@ -65,11 +67,11 @@ export default function ChannelsPage() {
 
   // Poll for connection state when showing QR code
   useEffect(() => {
-    if (connectionState !== 'qrcode' || !currentChannelId) return;
+    if (connectionState !== 'qrcode' || !currentChannelId || !isAuthenticated) return;
 
     const interval = setInterval(async () => {
       try {
-        const response = await apiClient.get<{ state: string; isActive: boolean }>(
+        const response = await api.get<{ state: string; isActive: boolean }>(
           `/whatsapp/instances/${currentChannelId}/state`,
         );
 
@@ -87,7 +89,7 @@ export default function ChannelsPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [connectionState, currentChannelId, fetchChannels]);
+  }, [connectionState, currentChannelId, fetchChannels, api, isAuthenticated]);
 
   const resetModal = () => {
     setConnectionState('idle');
@@ -108,7 +110,7 @@ export default function ChannelsPage() {
 
     try {
       // Create instance
-      const response = await apiClient.post<{ channel: Channel }>('/whatsapp/instances', {
+      const response = await api.post<{ channel: Channel }>('/whatsapp/instances', {
         name: newChannelName.trim(),
       });
 
@@ -116,7 +118,7 @@ export default function ChannelsPage() {
       setConnectionState('qrcode');
 
       // Get QR code
-      const qrResponse = await apiClient.get<QRCodeData>(
+      const qrResponse = await api.get<QRCodeData>(
         `/whatsapp/instances/${response.channel.id}/qrcode`,
       );
 
@@ -131,7 +133,7 @@ export default function ChannelsPage() {
     if (!currentChannelId) return;
 
     try {
-      const qrResponse = await apiClient.get<QRCodeData>(
+      const qrResponse = await api.get<QRCodeData>(
         `/whatsapp/instances/${currentChannelId}/qrcode`,
       );
       setQrCode(qrResponse);
@@ -142,7 +144,7 @@ export default function ChannelsPage() {
 
   const handleDisconnect = async (channelId: string) => {
     try {
-      await apiClient.post(`/whatsapp/instances/${channelId}/disconnect`, {});
+      await api.post(`/whatsapp/instances/${channelId}/disconnect`, {});
       fetchChannels();
     } catch (err) {
       console.error('Failed to disconnect:', err);
@@ -154,7 +156,7 @@ export default function ChannelsPage() {
     if (!confirm('Tem certeza que deseja excluir este canal?')) return;
 
     try {
-      await apiClient.delete(`/whatsapp/instances/${channelId}`);
+      await api.delete(`/whatsapp/instances/${channelId}`);
       fetchChannels();
     } catch (err) {
       console.error('Failed to delete:', err);

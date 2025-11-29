@@ -4,6 +4,20 @@ import type { AppType, AuthContext } from '../types/app';
 
 export type { AuthContext, AppType };
 
+interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  tenantId: string;
+  avatarUrl?: string;
+}
+
+interface SessionPayload {
+  user: SessionUser;
+  expires: string;
+}
+
 export const requireAuth = createMiddleware<{
   Variables: {
     auth: AuthContext;
@@ -17,20 +31,36 @@ export const requireAuth = createMiddleware<{
 
   const token = authHeader.split(' ')[1];
 
-  // TODO: Validate JWT token with Auth.js
-  // For now, mock the auth context
   if (!token) {
     throw new HTTPException(401, { message: 'Invalid token' });
   }
 
-  // Mock auth context - will be replaced with real JWT validation
-  c.set('auth', {
-    userId: 'user-id',
-    tenantId: 'tenant-id',
-    role: 'admin',
-  });
+  try {
+    // Parse session token (JSON stringified session from Next-Auth)
+    const session = JSON.parse(decodeURIComponent(token)) as SessionPayload;
 
-  await next();
+    if (!session.user?.id || !session.user?.tenantId) {
+      throw new HTTPException(401, { message: 'Invalid session' });
+    }
+
+    // Check if session is expired
+    if (new Date(session.expires) < new Date()) {
+      throw new HTTPException(401, { message: 'Session expired' });
+    }
+
+    c.set('auth', {
+      userId: session.user.id,
+      tenantId: session.user.tenantId,
+      role: session.user.role || 'agent',
+    });
+
+    await next();
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    throw new HTTPException(401, { message: 'Invalid token format' });
+  }
 });
 
 export const requireRole = (roles: string[]) =>
