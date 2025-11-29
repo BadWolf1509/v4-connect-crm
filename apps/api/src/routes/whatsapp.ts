@@ -295,7 +295,7 @@ whatsappRoutes.post('/send', zValidator('json', sendMessageSchema), async (c) =>
   return c.json(result.data, 201);
 });
 
-// Sync channels with Evolution API instances
+// Sync channels with Evolution API instances (only updates status, never deletes)
 whatsappRoutes.post('/sync', async (c) => {
   const auth = c.get('auth');
 
@@ -305,23 +305,11 @@ whatsappRoutes.post('/sync', async (c) => {
     type: 'whatsapp',
   });
 
-  // Get all instances from Evolution API
-  const evolutionResult = await evolutionService.listInstances();
-
-  if (!evolutionResult.success || !evolutionResult.data) {
-    throw new HTTPException(500, {
-      message: `Failed to fetch Evolution instances: ${evolutionResult.error}`,
-    });
-  }
-
-  const evolutionInstances = evolutionResult.data;
-  const evolutionInstanceNames = new Set(evolutionInstances.map((i) => i.instanceName));
-
   const syncResults = {
     checked: channels.length,
-    deleted: 0,
     connected: 0,
     disconnected: 0,
+    errors: 0,
   };
 
   for (const channel of channels) {
@@ -331,28 +319,30 @@ whatsappRoutes.post('/sync', async (c) => {
 
     if (!instanceName) continue;
 
-    // Check if instance exists in Evolution API
-    if (!evolutionInstanceNames.has(instanceName)) {
-      // Instance was deleted from Evolution - remove from database
-      await channelsService.delete(channel.id, auth.tenantId);
-      syncResults.deleted++;
-      console.log(`Channel ${channel.id} deleted - instance ${instanceName} not found in Evolution`);
-      continue;
-    }
+    try {
+      // Get instance state directly
+      const stateResult = await evolutionService.getInstanceState(instanceName);
 
-    // Get instance state
-    const stateResult = await evolutionService.getInstanceState(instanceName);
+      if (stateResult.success && stateResult.data) {
+        const isConnected = stateResult.data.state === 'open';
 
-    if (stateResult.success && stateResult.data) {
-      const isConnected = stateResult.data.state === 'open';
-
-      if (isConnected && !channel.isActive) {
-        await channelsService.connect(channel.id, auth.tenantId);
-        syncResults.connected++;
-      } else if (!isConnected && channel.isActive) {
-        await channelsService.disconnect(channel.id, auth.tenantId);
-        syncResults.disconnected++;
+        if (isConnected && !channel.isActive) {
+          await channelsService.connect(channel.id, auth.tenantId);
+          syncResults.connected++;
+        } else if (!isConnected && channel.isActive) {
+          await channelsService.disconnect(channel.id, auth.tenantId);
+          syncResults.disconnected++;
+        }
+      } else {
+        // Instance not found or error - mark as disconnected but don't delete
+        if (channel.isActive) {
+          await channelsService.disconnect(channel.id, auth.tenantId);
+          syncResults.disconnected++;
+        }
       }
+    } catch (err) {
+      console.error(`Failed to sync channel ${channel.id}:`, err);
+      syncResults.errors++;
     }
   }
 
