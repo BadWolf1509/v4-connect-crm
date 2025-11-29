@@ -1,6 +1,6 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
-import { randomUUID } from 'crypto';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -47,7 +47,8 @@ async function main() {
   console.log('\n✅ Channel created successfully!');
 
   // Verify
-  const channels = await sql`SELECT id, name, type, provider, config, is_active FROM channels WHERE tenant_id = ${TENANT_ID}`;
+  const channels =
+    await sql`SELECT id, name, type, provider, config, is_active FROM channels WHERE tenant_id = ${TENANT_ID}`;
   console.table(channels);
 
   await sql.end();

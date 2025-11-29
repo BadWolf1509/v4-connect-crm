@@ -16,7 +16,8 @@ async function main() {
   console.table(tenants);
 
   console.log('\n=== CHANNELS ===');
-  const channels = await sql`SELECT id, tenant_id, name, type, provider, is_active, config FROM channels`;
+  const channels =
+    await sql`SELECT id, tenant_id, name, type, provider, is_active, config FROM channels`;
   console.table(channels);
 
   console.log('\n=== USERS ===');
