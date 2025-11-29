@@ -3,10 +3,10 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/inbox';
@@ -147,5 +147,25 @@ export default function LoginPage() {
         Demo: admin@v4connect.com / password123
       </p>
     </div>
+  );
+}
+
+function LoginFormFallback() {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-900/80 p-8 backdrop-blur">
+      <div className="mb-8 text-center">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-v4-red-500" />
+        <h1 className="text-2xl font-bold text-white">Entrar no V4 Connect</h1>
+        <p className="mt-2 text-gray-400">Carregando...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFormFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
