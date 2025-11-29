@@ -84,11 +84,39 @@ app.notFound((c) => {
 
 const port = Number.parseInt(process.env.PORT || '3002', 10);
 
-console.log(`🚀 V4 Connect API running on http://localhost:${port}`);
+// Process event handlers for debugging
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+});
 
-serve({
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled Rejection:', reason);
+});
+
+process.on('SIGTERM', () => {
+  console.log('📛 Received SIGTERM signal');
+});
+
+process.on('SIGINT', () => {
+  console.log('📛 Received SIGINT signal');
+});
+
+process.on('beforeExit', (code) => {
+  console.log('📛 Process beforeExit with code:', code);
+});
+
+console.log(`🚀 V4 Connect API running on http://localhost:${port}`);
+console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`📋 Database URL configured: ${!!process.env.DATABASE_URL}`);
+
+const server = serve({
   fetch: app.fetch,
   port,
 });
+
+// Heartbeat log every 30 seconds
+setInterval(() => {
+  console.log(`💓 API heartbeat - ${new Date().toISOString()}`);
+}, 30000);
 
 export default app;
