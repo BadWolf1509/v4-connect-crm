@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -71,7 +72,7 @@ app.notFound((c) => {
   );
 });
 
-const port = parseInt(process.env.PORT || '3001', 10);
+const port = parseInt(process.env.PORT || '3002', 10);
 
 console.log(`🚀 V4 Connect API running on http://localhost:${port}`);
 

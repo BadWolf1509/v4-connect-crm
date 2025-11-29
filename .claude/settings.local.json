@@ -17,7 +17,15 @@
       "Bash(node test-connection.mjs:*)",
       "Bash(node push-schema.mjs:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: V4 Connect CRM monorepo setup\n\n- Turborepo monorepo structure with pnpm workspaces\n- Next.js 15 web app with Auth.js authentication\n- Hono API with Drizzle ORM and PostgreSQL (Supabase)\n- React Native mobile app with Expo\n- WebSocket server for real-time updates\n- BullMQ worker for background jobs\n- Shared packages: database schema, types, UI components, validators\n- Complete database schema with 19 tables for:\n  - Multi-tenancy (tenants, users, teams)\n  - Omnichannel inbox (channels, conversations, messages)\n  - CRM pipeline (pipelines, stages, deals, activities)\n  - Marketing campaigns\n  - Chatbot builder (flow nodes, edges)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(node add-plan-column.mjs:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(curl:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix API startup and add missing dependencies\n\n- Add dotenv to load environment variables in API\n- Add zod to web app for auth schema validation\n- Change API default port to 3002 to avoid conflict with Next.js\n- Fix database connection URL for Supabase (aws-1 instead of aws-0)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

@@ -18,6 +18,7 @@
     "@v4-connect/types": "workspace:*",
     "@v4-connect/validators": "workspace:*",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.38.3",
     "hono": "^4.6.13",
     "nanoid": "^5.0.9",
