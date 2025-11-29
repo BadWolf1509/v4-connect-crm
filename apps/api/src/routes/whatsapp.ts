@@ -53,7 +53,14 @@ whatsappRoutes.post('/instances', zValidator('json', createInstanceSchema), asyn
     url: webhookUrl,
     webhookByEvents: false,
     webhookBase64: true,
-    events: ['messages.upsert', 'messages.update', 'connection.update', 'qrcode.updated'],
+    events: [
+      'messages.upsert',
+      'messages.update',
+      'connection.update',
+      'qrcode.updated',
+      'instance.delete',
+      'instance.logout',
+    ],
   });
 
   console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
@@ -286,6 +293,73 @@ whatsappRoutes.post('/send', zValidator('json', sendMessageSchema), async (c) =>
   }
 
   return c.json(result.data, 201);
+});
+
+// Sync channels with Evolution API instances
+whatsappRoutes.post('/sync', async (c) => {
+  const auth = c.get('auth');
+
+  // Get all channels for this tenant
+  const { channels } = await channelsService.findAll({
+    tenantId: auth.tenantId,
+    type: 'whatsapp',
+  });
+
+  // Get all instances from Evolution API
+  const evolutionResult = await evolutionService.listInstances();
+
+  if (!evolutionResult.success || !evolutionResult.data) {
+    throw new HTTPException(500, {
+      message: `Failed to fetch Evolution instances: ${evolutionResult.error}`,
+    });
+  }
+
+  const evolutionInstances = evolutionResult.data;
+  const evolutionInstanceNames = new Set(evolutionInstances.map((i) => i.instanceName));
+
+  const syncResults = {
+    checked: channels.length,
+    deleted: 0,
+    connected: 0,
+    disconnected: 0,
+  };
+
+  for (const channel of channels) {
+    if (channel.provider !== 'evolution') continue;
+
+    const instanceName = (channel.config as { instanceName?: string })?.instanceName;
+
+    if (!instanceName) continue;
+
+    // Check if instance exists in Evolution API
+    if (!evolutionInstanceNames.has(instanceName)) {
+      // Instance was deleted from Evolution - remove from database
+      await channelsService.delete(channel.id, auth.tenantId);
+      syncResults.deleted++;
+      console.log(`Channel ${channel.id} deleted - instance ${instanceName} not found in Evolution`);
+      continue;
+    }
+
+    // Get instance state
+    const stateResult = await evolutionService.getInstanceState(instanceName);
+
+    if (stateResult.success && stateResult.data) {
+      const isConnected = stateResult.data.state === 'open';
+
+      if (isConnected && !channel.isActive) {
+        await channelsService.connect(channel.id, auth.tenantId);
+        syncResults.connected++;
+      } else if (!isConnected && channel.isActive) {
+        await channelsService.disconnect(channel.id, auth.tenantId);
+        syncResults.disconnected++;
+      }
+    }
+  }
+
+  return c.json({
+    message: 'Sync completed',
+    results: syncResults,
+  });
 });
 
 // Check if numbers are on WhatsApp

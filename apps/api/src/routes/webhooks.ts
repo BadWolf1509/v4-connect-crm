@@ -247,6 +247,29 @@ webhooksRoutes.post('/whatsapp/evolution', async (c) => {
         }
         break;
       }
+
+      case 'instance.delete': {
+        // Instance was deleted from Evolution API Manager
+        console.log(`Instance ${instanceName} was deleted from Evolution API`);
+
+        // Delete channel from database
+        await db.delete(channels).where(eq(channels.id, channel.id));
+
+        console.log(`Channel ${channel.id} deleted due to Evolution API instance removal`);
+        break;
+      }
+
+      case 'instance.logout': {
+        // Instance was logged out from Evolution API
+        console.log(`Instance ${instanceName} was logged out from Evolution API`);
+
+        // Mark channel as disconnected
+        await db
+          .update(channels)
+          .set({ isActive: false, connectedAt: null })
+          .where(eq(channels.id, channel.id));
+        break;
+      }
     }
 
     return c.json({ success: true });

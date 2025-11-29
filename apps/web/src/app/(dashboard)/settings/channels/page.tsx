@@ -52,6 +52,8 @@ export default function ChannelsPage() {
   const fetchChannels = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
+      // Sync with Evolution API first, then fetch channels
+      await api.post('/whatsapp/sync', {}).catch(() => {});
       const data = await api.get<{ data: Channel[] }>('/channels');
       setChannels(data.data || []);
     } catch (err) {
