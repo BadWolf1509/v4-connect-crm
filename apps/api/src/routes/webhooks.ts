@@ -166,7 +166,10 @@ webhooksRoutes.post('/whatsapp/evolution', async (c) => {
         await publishNewMessage(channel.tenantId, conversation.id, messageWithSender);
 
         // Get full conversation data for update
-        const fullConversation = await conversationsService.findById(conversation.id, channel.tenantId);
+        const fullConversation = await conversationsService.findById(
+          conversation.id,
+          channel.tenantId,
+        );
 
         if (created) {
           // New conversation

@@ -53,12 +53,7 @@ whatsappRoutes.post('/instances', zValidator('json', createInstanceSchema), asyn
     url: webhookUrl,
     webhookByEvents: false,
     webhookBase64: true,
-    events: [
-      'messages.upsert',
-      'messages.update',
-      'connection.update',
-      'qrcode.updated',
-    ],
+    events: ['messages.upsert', 'messages.update', 'connection.update', 'qrcode.updated'],
   });
 
   console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
