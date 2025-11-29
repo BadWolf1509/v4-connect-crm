@@ -127,16 +127,4 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id?: string;
-    role?: string;
-    tenantId?: string;
-    avatarUrl?: string;
-    tenant?: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-  }
-}
+// JWT type is inferred from User through callbacks in next-auth v5
