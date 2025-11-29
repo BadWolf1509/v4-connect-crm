@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -35,7 +36,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(callbackUrl);
+      router.push(callbackUrl as Route);
       router.refresh();
     } catch (err) {
       setError('Ocorreu um erro. Tente novamente.');
