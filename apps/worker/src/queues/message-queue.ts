@@ -23,7 +23,7 @@ interface SendMessageJob {
 interface ProcessIncomingJob {
   channelId: string;
   channelType: string;
-  rawPayload: any;
+  rawPayload: unknown;
 }
 
 export const messageQueue = new Queue<SendMessageJob | ProcessIncomingJob>('messages', {

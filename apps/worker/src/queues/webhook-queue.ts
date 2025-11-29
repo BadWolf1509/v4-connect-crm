@@ -7,7 +7,7 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
 
 interface WebhookJob {
   type: 'whatsapp_official' | 'whatsapp_unofficial' | 'instagram' | 'messenger';
-  payload: any;
+  payload: unknown;
   signature?: string;
   tenantId?: string;
 }
@@ -49,6 +49,7 @@ export const webhookWorker = new Worker<WebhookJob>(
   },
 );
 
+// biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
 async function processWhatsAppOfficial(payload: any, _signature?: string) {
   // TODO: Validate webhook signature
   // const isValid = validateWhatsAppSignature(payload, signature);
@@ -76,6 +77,7 @@ async function processWhatsAppOfficial(payload: any, _signature?: string) {
   return { processed: true };
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
 async function processEvolutionAPI(payload: any) {
   const event = payload.event;
 
@@ -116,6 +118,7 @@ async function processEvolutionAPI(payload: any) {
   return { processed: true };
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
 async function processInstagram(payload: any, _signature?: string) {
   // TODO: Validate signature
   // TODO: Process Instagram DMs
@@ -131,6 +134,7 @@ async function processInstagram(payload: any, _signature?: string) {
   return { processed: true };
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
 async function processMessenger(payload: any, _signature?: string) {
   // TODO: Validate signature
   // TODO: Process Messenger messages

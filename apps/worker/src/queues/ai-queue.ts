@@ -28,7 +28,7 @@ interface ChatbotJob {
   chatbotId: string;
   conversationId: string;
   message: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
 }
 
 type AIJob = TranscriptionJob | SuggestionJob | SentimentJob | ChatbotJob;

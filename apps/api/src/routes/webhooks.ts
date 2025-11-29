@@ -43,6 +43,7 @@ webhooksRoutes.get('/whatsapp/official', async (c) => {
 });
 
 // WhatsApp Unofficial (Evolution API) webhook
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Webhook handler requires multiple event cases
 webhooksRoutes.post('/whatsapp/evolution', async (c) => {
   try {
     const payload = await c.req.json();

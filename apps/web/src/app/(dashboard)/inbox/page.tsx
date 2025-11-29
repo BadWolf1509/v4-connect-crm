@@ -37,6 +37,7 @@ const channelLabels: Record<string, string> = {
   email: 'Email',
 };
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex inbox UI with multiple states
 export default function InboxPage() {
   const { data: session } = useSession();
   const [messageInput, setMessageInput] = useState('');
@@ -532,6 +533,7 @@ export default function InboxPage() {
               </div>
             ) : (
               <>
+                {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Message rendering with conditional styles */}
                 {conversationMessages.map((message) => (
                   <div
                     key={message.id}
