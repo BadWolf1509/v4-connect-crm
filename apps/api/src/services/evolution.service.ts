@@ -131,7 +131,9 @@ export const evolutionService = {
   /**
    * Get instance connection state
    */
-  async getInstanceState(instanceName: string): Promise<EvolutionResponse<{ state: string }>> {
+  async getInstanceState(
+    instanceName: string,
+  ): Promise<EvolutionResponse<{ instance: { state: string } }>> {
     return evolutionFetch(`/instance/connectionState/${instanceName}`, {
       method: 'GET',
     });

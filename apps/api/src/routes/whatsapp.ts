@@ -144,7 +144,7 @@ whatsappRoutes.get('/instances/:channelId/state', async (c) => {
   }
 
   // Update channel status based on connection state
-  const state = result.data?.state;
+  const state = result.data?.instance?.state;
   const isActive = state === 'open';
 
   if (channel.isActive !== isActive) {
@@ -156,7 +156,7 @@ whatsappRoutes.get('/instances/:channelId/state', async (c) => {
   }
 
   return c.json({
-    state: result.data?.state,
+    state,
     isActive,
   });
 });
@@ -323,8 +323,8 @@ whatsappRoutes.post('/sync', async (c) => {
       // Get instance state directly
       const stateResult = await evolutionService.getInstanceState(instanceName);
 
-      if (stateResult.success && stateResult.data) {
-        const isConnected = stateResult.data.state === 'open';
+      if (stateResult.success && stateResult.data?.instance) {
+        const isConnected = stateResult.data.instance.state === 'open';
 
         if (isConnected && !channel.isActive) {
           await channelsService.connect(channel.id, auth.tenantId);
