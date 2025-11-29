@@ -25,7 +25,8 @@
       "Bash(node add-plan-column.mjs:*)",
       "Bash(pnpm dev:*)",
       "Bash(curl:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nFix API startup and add missing dependencies\n\n- Add dotenv to load environment variables in API\n- Add zod to web app for auth schema validation\n- Change API default port to 3002 to avoid conflict with Next.js\n- Fix database connection URL for Supabase (aws-1 instead of aws-0)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix API startup and add missing dependencies\n\n- Add dotenv to load environment variables in API\n- Add zod to web app for auth schema validation\n- Change API default port to 3002 to avoid conflict with Next.js\n- Fix database connection URL for Supabase (aws-1 instead of aws-0)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
