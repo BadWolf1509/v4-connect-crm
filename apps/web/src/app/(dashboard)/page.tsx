@@ -1,3 +1,6 @@
+'use client';
+
+import type { ReactNode } from 'react';
 import { MessageSquare, Users, TrendingUp, Zap } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -93,7 +96,7 @@ function StatCard({
   title: string;
   value: string;
   change: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   const isPositive = change.startsWith('+');
 

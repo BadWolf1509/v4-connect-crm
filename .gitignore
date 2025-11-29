@@ -49,3 +49,5 @@ ios/
 *.sqlite
 packages/database/test-*.mjs
 packages/database/push-schema.mjs
+
+.vercel
