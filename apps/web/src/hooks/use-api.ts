@@ -43,10 +43,11 @@ export function useApi() {
         ...(options?.headers as Record<string, string>),
       };
 
-      // Add authorization header with session token (base64 encoded to avoid header issues)
+      // Add authorization header with session token (base64 encoded, UTF-8 safe)
       if (session) {
         const sessionJson = JSON.stringify(session);
-        const sessionBase64 = btoa(sessionJson);
+        // UTF-8 safe base64 encoding
+        const sessionBase64 = btoa(unescape(encodeURIComponent(sessionJson)));
         console.log('[useApi] Session structure:', {
           hasUser: !!session.user,
           userId: session.user?.id,

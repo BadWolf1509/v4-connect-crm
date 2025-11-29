@@ -37,12 +37,14 @@ export const requireAuth = createMiddleware<{
 
   try {
     // Parse session token (base64 encoded JSON from Next-Auth session)
-    // Decode from base64, then parse JSON
+    // Decode from base64 (UTF-8 safe), then parse JSON
     let tokenString: string;
     try {
-      tokenString = Buffer.from(token, 'base64').toString('utf-8');
+      // Decode base64, then decode URI component for UTF-8 support
+      const decoded = Buffer.from(token, 'base64').toString('utf-8');
+      tokenString = decodeURIComponent(decoded);
     } catch {
-      // If base64 decode fails, try as plain JSON
+      // If decode fails, try as plain JSON
       tokenString = token;
     }
 
