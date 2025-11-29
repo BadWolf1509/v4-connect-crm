@@ -335,6 +335,9 @@ importers:
         specifier: ^3.4.5
         version: 3.4.7
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.1
       '@v4-connect/typescript':
         specifier: workspace:*
         version: link:../../tooling/typescript
