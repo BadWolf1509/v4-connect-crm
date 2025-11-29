@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next';
+import { join } from 'path';
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@v4/types', '@v4/utils', '@v4/validators'],
+  output: 'standalone',
+  outputFileTracingRoot: join(__dirname, '../../'),
+  transpilePackages: ['@v4-connect/types', '@v4-connect/utils', '@v4-connect/validators'],
   experimental: {
     typedRoutes: true,
   },
