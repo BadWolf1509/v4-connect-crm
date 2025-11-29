@@ -25,10 +25,18 @@ const app = new Hono();
 app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', secureHeaders());
+// CORS - allow Vercel and localhost
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://v4-connect-crm-web.vercel.app',
+  process.env.CORS_ORIGIN,
+].filter(Boolean) as string[];
+
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
