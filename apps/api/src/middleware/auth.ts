@@ -37,14 +37,31 @@ export const requireAuth = createMiddleware<{
 
   try {
     // Parse session token (JSON stringified session from Next-Auth)
-    const session = JSON.parse(decodeURIComponent(token)) as SessionPayload;
+    // Try decoding first (in case it was URI encoded), then parse JSON
+    let tokenString = token;
+    try {
+      tokenString = decodeURIComponent(token);
+    } catch {
+      // Token wasn't URI encoded, use as-is
+    }
+
+    const session = JSON.parse(tokenString) as SessionPayload;
+
+    console.log('[Auth] Session parsed:', {
+      hasUser: !!session.user,
+      userId: session.user?.id,
+      tenantId: session.user?.tenantId,
+      expires: session.expires,
+    });
 
     if (!session.user?.id || !session.user?.tenantId) {
+      console.error('[Auth] Missing user id or tenantId');
       throw new HTTPException(401, { message: 'Invalid session' });
     }
 
     // Check if session is expired
     if (new Date(session.expires) < new Date()) {
+      console.error('[Auth] Session expired');
       throw new HTTPException(401, { message: 'Session expired' });
     }
 
@@ -59,6 +76,7 @@ export const requireAuth = createMiddleware<{
     if (error instanceof HTTPException) {
       throw error;
     }
+    console.error('[Auth] Token parse error:', error);
     throw new HTTPException(401, { message: 'Invalid token format' });
   }
 });

@@ -45,7 +45,14 @@ export function useApi() {
 
       // Add authorization header with session token
       if (session) {
-        headers.Authorization = `Bearer ${JSON.stringify(session)}`;
+        const sessionJson = JSON.stringify(session);
+        console.log('[useApi] Session structure:', {
+          hasUser: !!session.user,
+          userId: session.user?.id,
+          tenantId: session.user?.tenantId,
+          tokenLength: sessionJson.length,
+        });
+        headers.Authorization = `Bearer ${sessionJson}`;
       }
 
       const response = await fetch(url, {
