@@ -48,12 +48,6 @@ export function useApi() {
         const sessionJson = JSON.stringify(session);
         // UTF-8 safe base64 encoding
         const sessionBase64 = btoa(unescape(encodeURIComponent(sessionJson)));
-        console.log('[useApi] Session structure:', {
-          hasUser: !!session.user,
-          userId: session.user?.id,
-          tenantId: session.user?.tenantId,
-          tokenLength: sessionJson.length,
-        });
         headers.Authorization = `Bearer ${sessionBase64}`;
       }
 

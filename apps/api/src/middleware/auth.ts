@@ -46,24 +46,14 @@ export const requireAuth = createMiddleware<{
       tokenString = token;
     }
 
-    console.log('[Auth] Decoded token length:', tokenString.length);
     const session = JSON.parse(tokenString) as SessionPayload;
 
-    console.log('[Auth] Session parsed:', {
-      hasUser: !!session.user,
-      userId: session.user?.id,
-      tenantId: session.user?.tenantId,
-      expires: session.expires,
-    });
-
     if (!session.user?.id || !session.user?.tenantId) {
-      console.error('[Auth] Missing user id or tenantId');
       throw new HTTPException(401, { message: 'Invalid session' });
     }
 
     // Check if session is expired
     if (new Date(session.expires) < new Date()) {
-      console.error('[Auth] Session expired');
       throw new HTTPException(401, { message: 'Session expired' });
     }
 
@@ -78,7 +68,6 @@ export const requireAuth = createMiddleware<{
     if (error instanceof HTTPException) {
       throw error;
     }
-    console.error('[Auth] Token parse error:', error);
     throw new HTTPException(401, { message: 'Invalid token format' });
   }
 });

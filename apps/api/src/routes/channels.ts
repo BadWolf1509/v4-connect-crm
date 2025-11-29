@@ -34,7 +34,7 @@ channelsRoutes.get('/', async (c) => {
     isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
   });
 
-  return c.json(result);
+  return c.json({ data: result.channels });
 });
 
 // Get channel by ID
