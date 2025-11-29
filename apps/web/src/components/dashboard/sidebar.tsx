@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -18,17 +19,17 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: BarChart3 },
-  { name: 'Inbox', href: '/inbox', icon: MessageSquare },
-  { name: 'Contatos', href: '/contacts', icon: Users },
-  { name: 'CRM', href: '/crm', icon: Kanban },
-  { name: 'Chatbots', href: '/chatbots', icon: Bot },
-  { name: 'Campanhas', href: '/campaigns', icon: Megaphone },
+  { name: 'Dashboard', href: '/' as Route, icon: BarChart3 },
+  { name: 'Inbox', href: '/inbox' as Route, icon: MessageSquare },
+  { name: 'Contatos', href: '/contacts' as Route, icon: Users },
+  { name: 'CRM', href: '/crm' as Route, icon: Kanban },
+  { name: 'Chatbots', href: '/chatbots' as Route, icon: Bot },
+  { name: 'Campanhas', href: '/campaigns' as Route, icon: Megaphone },
 ];
 
 const bottomNavigation = [
-  { name: 'Configurações', href: '/settings', icon: Settings },
-  { name: 'Ajuda', href: '/help', icon: HelpCircle },
+  { name: 'Configurações', href: '/settings' as Route, icon: Settings },
+  { name: 'Ajuda', href: '/help' as Route, icon: HelpCircle },
 ];
 
 export function Sidebar() {
