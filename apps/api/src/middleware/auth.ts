@@ -36,13 +36,14 @@ export const requireAuth = createMiddleware<{
   }
 
   try {
-    // Parse session token (JSON stringified session from Next-Auth)
-    // Try decoding first (in case it was URI encoded), then parse JSON
-    let tokenString = token;
+    // Parse session token (base64 encoded JSON from Next-Auth session)
+    // Decode from base64, then parse JSON
+    let tokenString: string;
     try {
-      tokenString = decodeURIComponent(token);
+      tokenString = Buffer.from(token, 'base64').toString('utf-8');
     } catch {
-      // Token wasn't URI encoded, use as-is
+      // If base64 decode fails, try as plain JSON
+      tokenString = token;
     }
 
     const session = JSON.parse(tokenString) as SessionPayload;
