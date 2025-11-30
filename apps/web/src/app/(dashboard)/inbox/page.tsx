@@ -1,5 +1,6 @@
 'use client';
 
+import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import { useSocketContext } from '@/providers/socket-provider';
 import { type ConversationStatus, type Message, useInboxStore } from '@/stores/inbox-store';
@@ -21,8 +22,6 @@ import {
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
-
 const channelColors: Record<string, string> = {
   whatsapp: 'bg-green-500',
   instagram: 'bg-gradient-to-br from-purple-500 to-pink-500',
@@ -40,6 +39,7 @@ const channelLabels: Record<string, string> = {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex inbox UI with multiple states
 export default function InboxPage() {
   const { data: session } = useSession();
+  const { api, isAuthenticated } = useApi();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -85,34 +85,19 @@ export default function InboxPage() {
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
-    if (!session?.user?.tenantId) return;
+    if (!isAuthenticated) return;
 
     setConversationsLoading(true);
     setConversationsError(null);
 
     try {
-      const params = new URLSearchParams();
+      const params: Record<string, string> = {};
       if (filter !== 'all') {
-        params.append('status', filter);
+        params.status = filter;
       }
 
-      const response = await fetch(`${API_URL}/api/v1/conversations?${params}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-tenant-id': session.user.tenantId,
-          'x-user-id': session.user.id,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao carregar conversas');
-      }
-
-      const data = await response.json();
-
-      // Transform API response to store format
-      const transformedConversations = (data.conversations || []).map(
-        (conv: {
+      const data = await api.get<{
+        conversations: Array<{
           id: string;
           contact: {
             id: string;
@@ -125,23 +110,30 @@ export default function InboxPage() {
           lastMessageAt: string;
           status: string;
           assigneeId?: string;
-        }) => ({
-          id: conv.id,
-          contact: {
-            id: conv.contact?.id || '',
-            name: conv.contact?.name || 'Desconhecido',
-            phone: conv.contact?.phone,
-            email: conv.contact?.email,
-            avatarUrl: conv.contact?.avatarUrl,
-          },
-          channel: conv.channel?.type || 'whatsapp',
-          lastMessage: '', // Will be populated when selecting
-          lastMessageAt: conv.lastMessageAt,
-          unreadCount: 0, // TODO: Add unread count to API
-          status: conv.status as ConversationStatus,
-          assignedTo: conv.assigneeId,
-        }),
-      );
+        }>;
+      }>('/conversations', { params });
+
+      // Transform API response to store format
+      const transformedConversations = (data.conversations || []).map((conv) => ({
+        id: conv.id,
+        contact: {
+          id: conv.contact?.id || '',
+          name: conv.contact?.name || 'Desconhecido',
+          phone: conv.contact?.phone,
+          email: conv.contact?.email,
+          avatarUrl: conv.contact?.avatarUrl,
+        },
+        channel: (conv.channel?.type || 'whatsapp') as
+          | 'whatsapp'
+          | 'instagram'
+          | 'messenger'
+          | 'email',
+        lastMessage: '', // Will be populated when selecting
+        lastMessageAt: conv.lastMessageAt,
+        unreadCount: 0, // TODO: Add unread count to API
+        status: conv.status as ConversationStatus,
+        assignedTo: conv.assigneeId,
+      }));
 
       setConversations(transformedConversations);
     } catch (error) {
@@ -150,33 +142,25 @@ export default function InboxPage() {
     } finally {
       setConversationsLoading(false);
     }
-  }, [session, filter, setConversations, setConversationsLoading, setConversationsError]);
+  }, [
+    api,
+    isAuthenticated,
+    filter,
+    setConversations,
+    setConversationsLoading,
+    setConversationsError,
+  ]);
 
   // Fetch messages for selected conversation
   const fetchMessages = useCallback(
     async (conversationId: string) => {
-      if (!session?.user?.tenantId) return;
+      if (!isAuthenticated) return;
 
       setMessagesLoading(true);
 
       try {
-        const response = await fetch(`${API_URL}/api/v1/messages/conversation/${conversationId}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-tenant-id': session.user.tenantId,
-            'x-user-id': session.user.id,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Falha ao carregar mensagens');
-        }
-
-        const data = await response.json();
-
-        // Transform API response to store format
-        const transformedMessages: Message[] = (data.messages || []).map(
-          (msg: {
+        const data = await api.get<{
+          messages: Array<{
             id: string;
             content?: string;
             type: string;
@@ -185,18 +169,21 @@ export default function InboxPage() {
             createdAt: string;
             status: string;
             mediaUrl?: string;
-          }) => ({
-            id: msg.id,
-            conversationId,
-            content: msg.content || '',
-            type: msg.type || 'text',
-            sender: msg.senderType === 'user' ? 'user' : 'contact',
-            senderName: msg.senderType === 'user' ? session.user?.name : undefined,
-            timestamp: msg.createdAt,
-            status: msg.status || 'sent',
-            mediaUrl: msg.mediaUrl,
-          }),
-        );
+          }>;
+        }>(`/messages/conversation/${conversationId}`);
+
+        // Transform API response to store format
+        const transformedMessages: Message[] = (data.messages || []).map((msg) => ({
+          id: msg.id,
+          conversationId,
+          content: msg.content || '',
+          type: (msg.type || 'text') as 'text' | 'image' | 'audio' | 'video' | 'file',
+          sender: msg.senderType === 'user' ? ('user' as const) : ('contact' as const),
+          senderName: msg.senderType === 'user' ? session?.user?.name : undefined,
+          timestamp: msg.createdAt,
+          status: (msg.status || 'sent') as 'sending' | 'sent' | 'delivered' | 'read' | 'failed',
+          mediaUrl: msg.mediaUrl,
+        }));
 
         setMessages(conversationId, transformedMessages);
       } catch (error) {
@@ -205,12 +192,12 @@ export default function InboxPage() {
         setMessagesLoading(false);
       }
     },
-    [session, setMessages, setMessagesLoading],
+    [api, isAuthenticated, session, setMessages, setMessagesLoading],
   );
 
   // Send message
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversationId || !session?.user?.tenantId) return;
+    if (!messageInput.trim() || !selectedConversationId || !isAuthenticated) return;
 
     setSending(true);
     const content = messageInput;
@@ -223,30 +210,18 @@ export default function InboxPage() {
       content,
       type: 'text',
       sender: 'user',
-      senderName: session.user.name || undefined,
+      senderName: session?.user?.name || undefined,
       timestamp: new Date().toISOString(),
       status: 'sending',
     };
     addMessage(selectedConversationId, tempMessage);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-tenant-id': session.user.tenantId,
-          'x-user-id': session.user.id,
-        },
-        body: JSON.stringify({
-          conversationId: selectedConversationId,
-          type: 'text',
-          content,
-        }),
+      await api.post('/messages', {
+        conversationId: selectedConversationId,
+        type: 'text',
+        content,
       });
-
-      if (!response.ok) {
-        throw new Error('Falha ao enviar mensagem');
-      }
 
       // Socket will handle the real message update
     } catch (error) {

@@ -2,6 +2,26 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
+// Re-export commonly used operators from drizzle-orm
+export {
+  eq,
+  and,
+  or,
+  not,
+  gt,
+  gte,
+  lt,
+  lte,
+  ne,
+  isNull,
+  isNotNull,
+  inArray,
+  notInArray,
+  sql,
+  asc,
+  desc,
+} from 'drizzle-orm';
+
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {

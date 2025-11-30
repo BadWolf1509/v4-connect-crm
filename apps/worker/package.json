@@ -15,7 +15,9 @@
     "@v4-connect/database": "workspace:*",
     "@v4-connect/types": "workspace:*",
     "bullmq": "^5.31.0",
+    "dotenv": "^17.2.3",
     "ioredis": "^5.4.1",
+    "nanoid": "^5.0.9",
     "openai": "^4.76.0"
   },
   "devDependencies": {

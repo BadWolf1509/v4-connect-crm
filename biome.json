@@ -52,7 +52,12 @@
       "build",
       ".expo",
       "*.config.js",
-      "*.config.mjs"
+      "*.config.mjs",
+      "**/__tests__/**",
+      "**/vendors/**",
+      "**/vendor/**",
+      "**/*.min.js",
+      "**/coverage/**"
     ]
   }
 }

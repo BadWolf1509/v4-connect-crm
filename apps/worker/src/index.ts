@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Redis } from 'ioredis';
 import { aiWorker } from './queues/ai-queue';
 import { campaignWorker } from './queues/campaign-queue';

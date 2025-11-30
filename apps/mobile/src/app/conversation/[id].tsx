@@ -9,8 +9,9 @@ import {
   Phone,
   Send,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -20,76 +21,85 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useConversation } from '../../hooks/use-conversations';
+import { type Message, useMessages, useSendMessage } from '../../hooks/use-messages';
 
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'contact';
-  timestamp: string;
-  status: 'sent' | 'delivered' | 'read';
+function formatTime(date: string): string {
+  return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-const messages: Message[] = [
-  {
-    id: '1',
-    content: 'Olá, tudo bem? Gostaria de saber mais sobre o produto X.',
-    sender: 'contact',
-    timestamp: '10:25',
-    status: 'read',
-  },
-  {
-    id: '2',
-    content:
-      'Olá! Tudo ótimo, e com você? O produto X está disponível com entrega em até 3 dias úteis.',
-    sender: 'user',
-    timestamp: '10:28',
-    status: 'read',
-  },
-  {
-    id: '3',
-    content: 'Perfeito! Qual o valor?',
-    sender: 'contact',
-    timestamp: '10:29',
-    status: 'read',
-  },
-  {
-    id: '4',
-    content: 'O valor é R$ 199,90 com frete grátis para sua região.',
-    sender: 'user',
-    timestamp: '10:30',
-    status: 'delivered',
-  },
-];
-
 export default function ConversationScreen() {
-  const { id: _conversationId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [messageInput, setMessageInput] = useState('');
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View className={`max-w-[80%] mb-2 ${item.sender === 'user' ? 'self-end' : 'self-start'}`}>
-      <View
-        className={`px-4 py-2 rounded-2xl ${
-          item.sender === 'user' ? 'bg-v4-red-500' : 'bg-gray-800'
-        }`}
-      >
-        <Text className="text-white">{item.content}</Text>
-        <View className="flex-row items-center justify-end mt-1">
-          <Text className={`text-xs ${item.sender === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
-            {item.timestamp}
-          </Text>
-          {item.sender === 'user' && (
-            <View className="ml-1">
-              {item.status === 'read' ? (
-                <CheckCheck size={12} color="#fff" />
-              ) : (
-                <Check size={12} color="#fff" />
-              )}
-            </View>
-          )}
+  const { data: conversation, isLoading: conversationLoading } = useConversation(id || '');
+  const { data: messagesData, isLoading: messagesLoading, refetch } = useMessages(id || '');
+  const sendMessage = useSendMessage();
+
+  const messages = messagesData?.messages || [];
+  const isLoading = conversationLoading || messagesLoading;
+
+  const handleSend = useCallback(() => {
+    const content = messageInput.trim();
+    if (!content || !id) return;
+
+    sendMessage.mutate(
+      {
+        conversationId: id,
+        type: 'text',
+        content,
+      },
+      {
+        onSuccess: () => {
+          setMessageInput('');
+          refetch();
+        },
+      },
+    );
+  }, [messageInput, id, sendMessage, refetch]);
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isUser = item.sender === 'user';
+    const statusIcon =
+      item.status === 'read' ? (
+        <CheckCheck size={12} color="#fff" />
+      ) : item.status === 'delivered' ? (
+        <CheckCheck size={12} color="rgba(255,255,255,0.7)" />
+      ) : (
+        <Check size={12} color="rgba(255,255,255,0.7)" />
+      );
+
+    return (
+      <View className={`max-w-[80%] mb-2 ${isUser ? 'self-end' : 'self-start'}`}>
+        <View className={`px-4 py-2 rounded-2xl ${isUser ? 'bg-v4-red-500' : 'bg-gray-800'}`}>
+          <Text className="text-white">{item.content}</Text>
+          <View className="flex-row items-center justify-end mt-1">
+            <Text className={`text-xs ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
+              {formatTime(item.createdAt)}
+            </Text>
+            {isUser && <View className="ml-1">{statusIcon}</View>}
+          </View>
         </View>
       </View>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View className="flex-1 items-center justify-center py-20">
+      <Text className="text-gray-500">Nenhuma mensagem ainda</Text>
     </View>
   );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-950 items-center justify-center">
+        <ActivityIndicator size="large" color="#ef4444" />
+      </SafeAreaView>
+    );
+  }
+
+  const contactName = conversation?.contact?.name || 'Desconhecido';
+  const contactInitial = contactName[0]?.toUpperCase() || '?';
 
   return (
     <SafeAreaView className="flex-1 bg-gray-950" edges={['top']}>
@@ -101,11 +111,13 @@ export default function ConversationScreen() {
 
         <View className="flex-1 flex-row items-center ml-2">
           <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center">
-            <Text className="font-medium text-white">J</Text>
+            <Text className="font-medium text-white">{contactInitial}</Text>
           </View>
           <View className="ml-3">
-            <Text className="font-medium text-white">João Silva</Text>
-            <Text className="text-xs text-gray-400">Online</Text>
+            <Text className="font-medium text-white">{contactName}</Text>
+            <Text className="text-xs text-gray-400">
+              {conversation?.contact?.phone || 'Sem telefone'}
+            </Text>
           </View>
         </View>
 
@@ -127,7 +139,8 @@ export default function ConversationScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerStyle={{ padding: 16 }}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={messages.length === 0 ? { flex: 1 } : { padding: 16 }}
           inverted={false}
         />
 
@@ -145,12 +158,21 @@ export default function ConversationScreen() {
               placeholderTextColor="#71717a"
               multiline
               className="text-white max-h-24"
+              editable={!sendMessage.isPending}
             />
           </View>
 
           {messageInput.trim() ? (
-            <TouchableOpacity className="p-3 rounded-full bg-v4-red-500">
-              <Send size={18} color="white" />
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={sendMessage.isPending}
+              className={`p-3 rounded-full ${sendMessage.isPending ? 'bg-gray-600' : 'bg-v4-red-500'}`}
+            >
+              {sendMessage.isPending ? (
+                <ActivityIndicator size={18} color="white" />
+              ) : (
+                <Send size={18} color="white" />
+              )}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity className="p-3 rounded-full bg-gray-800">

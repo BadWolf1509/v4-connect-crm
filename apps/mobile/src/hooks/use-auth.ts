@@ -1,11 +1,13 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { api } from '../services/api';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  tenantId: string;
 }
 
 interface AuthState {
@@ -18,37 +20,58 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 }
 
-export const useAuth = create<AuthState>((set) => ({
+interface LoginResponse {
+  user: User;
+  token: string;
+}
+
+interface MeResponse {
+  user: User;
+}
+
+export const useAuth = create<AuthState>((set, _get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (email: string, _password: string) => {
-    // TODO: Call API to login
-    const response = { user: { id: '1', name: 'User', email, role: 'agent' }, token: 'jwt' };
+  login: async (email: string, password: string) => {
+    try {
+      const response = await api.post<LoginResponse>('/auth/login', {
+        email,
+        password,
+      });
 
-    await SecureStore.setItemAsync('token', response.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(response.user));
+      await SecureStore.setItemAsync('token', response.token);
+      await SecureStore.setItemAsync('user', JSON.stringify(response.user));
 
-    set({
-      user: response.user,
-      token: response.token,
-      isAuthenticated: true,
-      isLoading: false,
-    });
+      set({
+        user: response.user,
+        token: response.token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync('token');
-    await SecureStore.deleteItemAsync('user');
+    try {
+      // Try to call logout endpoint
+      await api.post('/auth/logout').catch(() => {});
+    } finally {
+      await SecureStore.deleteItemAsync('token');
+      await SecureStore.deleteItemAsync('user');
 
-    set({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    }
   },
 
   checkAuth: async () => {
@@ -56,18 +79,27 @@ export const useAuth = create<AuthState>((set) => ({
       const token = await SecureStore.getItemAsync('token');
       const userJson = await SecureStore.getItemAsync('user');
 
-      if (token && userJson) {
-        const user = JSON.parse(userJson);
+      if (!token || !userJson) {
+        set({ isLoading: false });
+        return;
+      }
+
+      // Validate token by calling /auth/me
+      try {
+        const response = await api.get<MeResponse>('/auth/me');
         set({
-          user,
+          user: response.user,
           token,
           isAuthenticated: true,
           isLoading: false,
         });
-      } else {
+      } catch {
+        // Token is invalid, clear storage
+        await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('user');
         set({ isLoading: false });
       }
-    } catch (_error) {
+    } catch {
       set({ isLoading: false });
     }
   },

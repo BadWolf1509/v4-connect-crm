@@ -141,6 +141,7 @@ export const conversationsService = {
           avatarUrl: contacts.avatarUrl,
           tags: contacts.tags,
           customFields: contacts.customFields,
+          externalId: contacts.externalId,
         },
         channel: {
           id: channels.id,

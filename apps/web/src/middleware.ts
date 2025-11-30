@@ -10,8 +10,9 @@ export default auth((req) => {
     (route) => nextUrl.pathname === route || nextUrl.pathname.startsWith('/api/auth'),
   );
 
-  // Redirect authenticated users from auth pages to dashboard
-  if (isAuthenticated && (nextUrl.pathname === '/login' || nextUrl.pathname === '/register')) {
+  // Redirect authenticated users from login page to dashboard
+  // Note: We allow authenticated users to access /register to create additional accounts
+  if (isAuthenticated && nextUrl.pathname === '/login') {
     return NextResponse.redirect(new URL('/inbox', nextUrl));
   }
 

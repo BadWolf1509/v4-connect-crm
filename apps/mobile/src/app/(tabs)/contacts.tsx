@@ -1,61 +1,76 @@
-import { Plus, Search } from 'lucide-react-native';
+import { Plus, RefreshCw, Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  tags: string[];
-}
-
-const contacts: Contact[] = [
-  {
-    id: '1',
-    name: 'João Silva',
-    email: 'joao@email.com',
-    phone: '+55 11 99999-1234',
-    tags: ['lead', 'vip'],
-  },
-  {
-    id: '2',
-    name: 'Maria Santos',
-    email: 'maria@email.com',
-    phone: '+55 11 99999-5678',
-    tags: ['cliente'],
-  },
-  {
-    id: '3',
-    name: 'Pedro Oliveira',
-    email: 'pedro@email.com',
-    phone: '+55 11 99999-9012',
-    tags: ['prospect'],
-  },
-];
+import { type Contact, useContacts } from '../../hooks/use-contacts';
 
 export default function ContactsScreen() {
   const [search, setSearch] = useState('');
 
-  const renderContact = ({ item }: { item: Contact }) => (
-    <TouchableOpacity className="flex-row items-center px-4 py-3 border-b border-gray-800">
-      <View className="w-12 h-12 rounded-full bg-gray-700 items-center justify-center">
-        <Text className="text-lg font-medium text-white">{item.name[0]}</Text>
-      </View>
+  const { data, isLoading, error, refetch, isRefetching } = useContacts({
+    search: search || undefined,
+    limit: 50,
+  });
 
-      <View className="flex-1 ml-3">
-        <Text className="font-medium text-white">{item.name}</Text>
-        <Text className="text-sm text-gray-400">{item.phone}</Text>
-        <View className="flex-row mt-1">
-          {item.tags.map((tag) => (
-            <View key={tag} className="px-2 py-0.5 rounded-full bg-gray-800 mr-1">
-              <Text className="text-xs text-gray-400">{tag}</Text>
-            </View>
-          ))}
+  const contacts = data?.contacts || [];
+
+  const renderContact = ({ item }: { item: Contact }) => {
+    const initial = item.name[0]?.toUpperCase() || '?';
+    const tags = item.tags || [];
+
+    return (
+      <TouchableOpacity className="flex-row items-center px-4 py-3 border-b border-gray-800">
+        <View className="w-12 h-12 rounded-full bg-gray-700 items-center justify-center">
+          <Text className="text-lg font-medium text-white">{initial}</Text>
         </View>
-      </View>
-    </TouchableOpacity>
+
+        <View className="flex-1 ml-3">
+          <Text className="font-medium text-white">{item.name}</Text>
+          <Text className="text-sm text-gray-400">{item.phone || item.email || 'Sem contato'}</Text>
+          {tags.length > 0 && (
+            <View className="flex-row mt-1 flex-wrap">
+              {tags.slice(0, 3).map((tag) => (
+                <View key={tag} className="px-2 py-0.5 rounded-full bg-gray-800 mr-1 mb-1">
+                  <Text className="text-xs text-gray-400">{tag}</Text>
+                </View>
+              ))}
+              {tags.length > 3 && (
+                <View className="px-2 py-0.5 rounded-full bg-gray-800 mr-1">
+                  <Text className="text-xs text-gray-400">+{tags.length - 3}</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View className="flex-1 items-center justify-center py-20">
+      <Text className="text-gray-500">Nenhum contato encontrado</Text>
+    </View>
+  );
+
+  const renderError = () => (
+    <View className="flex-1 items-center justify-center py-20">
+      <Text className="text-red-500 mb-4">Erro ao carregar contatos</Text>
+      <TouchableOpacity
+        onPress={() => refetch()}
+        className="flex-row items-center px-4 py-2 rounded-lg bg-gray-800"
+      >
+        <RefreshCw size={16} color="#fff" />
+        <Text className="text-white ml-2">Tentar novamente</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -78,17 +93,36 @@ export default function ContactsScreen() {
             placeholder="Buscar contatos..."
             placeholderTextColor="#71717a"
             className="flex-1 ml-2 text-white"
+            autoCapitalize="none"
+            autoCorrect={false}
           />
         </View>
       </View>
 
-      {/* Contacts List */}
-      <FlatList
-        data={contacts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderContact}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      />
+      {/* Content */}
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#ef4444" />
+        </View>
+      ) : error ? (
+        renderError()
+      ) : (
+        <FlatList
+          data={contacts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderContact}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={contacts.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor="#ef4444"
+              colors={['#ef4444']}
+            />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

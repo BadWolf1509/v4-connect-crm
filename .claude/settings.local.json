@@ -43,7 +43,22 @@
       "Bash(pnpm run lint:*)",
       "Bash(pnpm run lint:fix:*)",
       "Bash(npx biome check:*)",
-      "Bash(node scripts/list-tenants.mjs:*)"
+      "Bash(node scripts/list-tenants.mjs:*)",
+      "Bash(pnpm check:*)",
+      "Bash(pnpm exec biome check:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(pnpm exec biome:*)",
+      "Bash(node -e:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm test:coverage:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)",
+      "Bash(copy \"C:\\Users\\welli\\OneDrive\\Pictures\\V4 - Vermelho.png\" \"D:\\V4-Connect-CRM\\apps\\web\\src\\app\\icon.png\")",
+      "Bash(wmic process where name=''node.exe'' get processid,commandline)",
+      "Bash(timeout:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
