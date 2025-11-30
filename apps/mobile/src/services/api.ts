@@ -32,11 +32,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   let url = `${API_URL}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
         searchParams.append(key, String(value));
       }
-    });
+    }
     const queryString = searchParams.toString();
     if (queryString) {
       url += `?${queryString}`;

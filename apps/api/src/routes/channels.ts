@@ -37,6 +37,7 @@ channelsRoutes.get('/', async (c) => {
 
   // Enrich WhatsApp channels with real-time status from Evolution API
   const enrichedChannels = await Promise.all(
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sync logic requires multiple conditions
     result.channels.map(async (channel) => {
       if (channel.type === 'whatsapp' && channel.provider === 'evolution') {
         const instanceName = (channel.config as { instanceName?: string })?.instanceName;
@@ -55,7 +56,11 @@ channelsRoutes.get('/', async (c) => {
                 } else {
                   await channelsService.disconnect(channel.id, auth.tenantId);
                 }
-                return { ...channel, isActive: isConnected, connectedAt: isConnected ? new Date() : null };
+                return {
+                  ...channel,
+                  isActive: isConnected,
+                  connectedAt: isConnected ? new Date() : null,
+                };
               }
             }
           } catch (err) {

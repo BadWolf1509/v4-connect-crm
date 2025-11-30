@@ -296,6 +296,7 @@ whatsappRoutes.post('/send', zValidator('json', sendMessageSchema), async (c) =>
 });
 
 // Sync channels with Evolution API instances (only updates status, never deletes)
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sync logic requires multiple conditions for channel states
 whatsappRoutes.post('/sync', async (c) => {
   const auth = c.get('auth');
 

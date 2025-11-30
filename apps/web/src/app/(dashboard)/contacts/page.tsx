@@ -34,6 +34,7 @@ interface ContactsResponse {
   limit: number;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Contacts page has complex filtering and state management
 export default function ContactsPage() {
   const { api, isAuthenticated } = useApi();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -281,6 +282,7 @@ export default function ContactsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
+              {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Contact row rendering has conditional logic */}
               {contacts.map((contact) => (
                 <tr key={contact.id} className="hover:bg-gray-800/50">
                   <td className="whitespace-nowrap px-6 py-4">

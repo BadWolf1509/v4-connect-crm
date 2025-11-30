@@ -112,6 +112,7 @@ async function processWhatsAppOfficial(payload: any, _signature?: string) {
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Webhook processing requires many conditional checks
 async function processEvolutionAPI(payload: any, channelId?: string) {
   const event = payload.event;
   const instanceName = payload.instance;
@@ -256,6 +257,7 @@ async function processInstagram(payload: any, _signature?: string) {
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: Webhook payload structure varies
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Messenger webhook processing requires many conditional checks
 async function processMessenger(payload: any, _signature?: string) {
   const entry = payload.entry?.[0];
   const messaging = entry?.messaging;

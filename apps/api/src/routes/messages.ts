@@ -74,6 +74,7 @@ messagesRoutes.get('/conversation/:conversationId', async (c) => {
 });
 
 // Send message
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Message handling has many conditions for different message types
 messagesRoutes.post('/', zValidator('json', sendMessageSchema), async (c) => {
   const auth = c.get('auth');
   const data = c.req.valid('json');

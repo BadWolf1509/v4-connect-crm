@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 
 // Load .env from apps/api directory (not monorepo root)
 // Use override: true to ensure our .env takes precedence over dotenv auto-inject
