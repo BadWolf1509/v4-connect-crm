@@ -70,7 +70,7 @@ describe('useApi', () => {
       const response = await result.current.api.get('/test-endpoint');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
       expect(url).toBe('http://localhost:3001/api/v1/test-endpoint');
       expect(options.method).toBe('GET');
       expect(options.headers['Content-Type']).toBe('application/json');
@@ -91,7 +91,7 @@ describe('useApi', () => {
         params: { page: 1, limit: 10, search: 'test' },
       });
 
-      const [url] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(url).toContain('page=1');
       expect(url).toContain('limit=10');
       expect(url).toContain('search=test');
@@ -109,7 +109,7 @@ describe('useApi', () => {
         params: { page: 1, filter: undefined },
       });
 
-      const [url] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(url).toContain('page=1');
       expect(url).not.toContain('filter');
     });
@@ -127,7 +127,7 @@ describe('useApi', () => {
       const body = { name: 'Test', value: 100 };
       const response = await result.current.api.post('/items', body);
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(options.method).toBe('POST');
       expect(options.body).toBe(JSON.stringify(body));
       expect(response).toEqual({ id: '123' });
@@ -143,7 +143,7 @@ describe('useApi', () => {
 
       await result.current.api.post('/items/123/action');
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(options.body).toBeUndefined();
     });
   });
@@ -159,7 +159,7 @@ describe('useApi', () => {
 
       await result.current.api.patch('/items/123', { name: 'Updated' });
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(options.method).toBe('PATCH');
       expect(options.body).toBe(JSON.stringify({ name: 'Updated' }));
     });
@@ -176,7 +176,7 @@ describe('useApi', () => {
 
       await result.current.api.put('/items/123', { name: 'Replaced' });
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(options.method).toBe('PUT');
     });
   });
@@ -192,7 +192,7 @@ describe('useApi', () => {
 
       await result.current.api.delete('/items/123');
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(url).toContain('/items/123');
       expect(options.method).toBe('DELETE');
     });
@@ -244,12 +244,12 @@ describe('useApi', () => {
 
       await result.current.api.get('/test');
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
       const authHeader = options.headers.Authorization;
       expect(authHeader).toMatch(/^Bearer [A-Za-z0-9+/=]+$/);
 
       // Decode and verify
-      const token = authHeader.replace('Bearer ', '');
+      const token = authHeader!.replace('Bearer ', '');
       const decoded = JSON.parse(decodeURIComponent(escape(atob(token))));
       expect(decoded.user.id).toBe('test-user-id');
     });
@@ -271,7 +271,7 @@ describe('useApi', () => {
 
       await result.current.api.get('/test');
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
       expect(options.headers.Authorization).toBeUndefined();
     });
   });

@@ -60,7 +60,7 @@ describe('InboxStore', () => {
 
       const { conversations } = useInboxStore.getState();
       expect(conversations).toHaveLength(2);
-      expect(conversations[0].id).toBe('conv-2');
+      expect(conversations[0]?.id).toBe('conv-2');
     });
 
     it('should update conversation', () => {
@@ -68,7 +68,7 @@ describe('InboxStore', () => {
       useInboxStore.getState().setConversations([conv]);
       useInboxStore.getState().updateConversation('conv-1', { status: 'resolved' });
 
-      expect(useInboxStore.getState().conversations[0].status).toBe('resolved');
+      expect(useInboxStore.getState().conversations[0]?.status).toBe('resolved');
     });
 
     it('should not update non-existent conversation', () => {
@@ -76,7 +76,7 @@ describe('InboxStore', () => {
       useInboxStore.getState().setConversations([conv]);
       useInboxStore.getState().updateConversation('non-existent', { status: 'resolved' });
 
-      expect(useInboxStore.getState().conversations[0].status).toBe('open');
+      expect(useInboxStore.getState().conversations[0]?.status).toBe('open');
     });
 
     it('should select conversation', () => {
@@ -139,7 +139,7 @@ describe('InboxStore', () => {
       useInboxStore.getState().setMessages('conv-1', [msg]);
       useInboxStore.getState().updateMessage('conv-1', 'msg-1', { status: 'read' });
 
-      expect(useInboxStore.getState().messages['conv-1'][0].status).toBe('read');
+      expect(useInboxStore.getState().messages['conv-1']?.[0]?.status).toBe('read');
     });
 
     it('should set messages loading state', () => {
@@ -199,7 +199,7 @@ describe('InboxStore', () => {
       });
       useInboxStore.getState().removeTypingUser('conv-1', 'user-1');
       expect(useInboxStore.getState().typingUsers).toHaveLength(1);
-      expect(useInboxStore.getState().typingUsers[0].userId).toBe('user-2');
+      expect(useInboxStore.getState().typingUsers[0]?.userId).toBe('user-2');
     });
   });
 
@@ -245,7 +245,7 @@ describe('InboxStore', () => {
 
         const filtered = useInboxStore.getState().getFilteredConversations();
         expect(filtered).toHaveLength(1);
-        expect(filtered[0].contact.name).toBe('John Doe');
+        expect(filtered[0]?.contact.name).toBe('John Doe');
       });
 
       it('should filter by search query on phone', () => {
@@ -297,7 +297,7 @@ describe('InboxStore', () => {
 
         const filtered = useInboxStore.getState().getFilteredConversations();
         expect(filtered).toHaveLength(1);
-        expect(filtered[0].id).toBe('conv-1');
+        expect(filtered[0]?.id).toBe('conv-1');
       });
     });
 

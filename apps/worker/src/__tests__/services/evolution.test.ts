@@ -131,7 +131,7 @@ describe('Evolution Service', () => {
 
       expect(result.success).toBe(true);
 
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const callBody = JSON.parse((mockFetch.mock.calls[0]?.[1] as RequestInit)?.body as string);
       expect(callBody.mediatype).toBe('image');
       expect(callBody.media).toBe('https://example.com/photo.jpg');
       expect(callBody.caption).toBe('My photo');
@@ -193,7 +193,7 @@ describe('Evolution Service', () => {
 
       expect(result.success).toBe(true);
 
-      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const callBody = JSON.parse((mockFetch.mock.calls[0]?.[1] as RequestInit)?.body as string);
       expect(callBody.mediatype).toBe('document');
       expect(callBody.fileName).toBe('contract.pdf');
       expect(callBody.mimetype).toBe('application/pdf');

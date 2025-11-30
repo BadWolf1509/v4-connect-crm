@@ -78,7 +78,9 @@ test.describe('CRM Pipeline', () => {
       await dealCard.dragTo(targetStage);
 
       // Deal should be in new stage
-      await expect(targetStage.getByTestId('deal-card')).toContainText(await dealCard.textContent() || '');
+      await expect(targetStage.getByTestId('deal-card')).toContainText(
+        (await dealCard.textContent()) || '',
+      );
     });
 
     test.skip('should open deal details on click', async ({ page }) => {

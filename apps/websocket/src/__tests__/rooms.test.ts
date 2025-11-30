@@ -204,16 +204,10 @@ describe('Multi-tenant room security', () => {
   });
 
   it('should validate room name format', () => {
-    const validRoomPatterns = [
-      /^tenant:[a-zA-Z0-9-]+$/,
-      /^user:[a-zA-Z0-9-]+$/,
-      /^conversation:[a-zA-Z0-9-]+$/,
-    ];
-
-    const testRooms = [
-      { room: 'tenant:abc-123', pattern: validRoomPatterns[0] },
-      { room: 'user:xyz-789', pattern: validRoomPatterns[1] },
-      { room: 'conversation:def-456', pattern: validRoomPatterns[2] },
+    const testRooms: Array<{ room: string; pattern: RegExp }> = [
+      { room: 'tenant:abc-123', pattern: /^tenant:[a-zA-Z0-9-]+$/ },
+      { room: 'user:xyz-789', pattern: /^user:[a-zA-Z0-9-]+$/ },
+      { room: 'conversation:def-456', pattern: /^conversation:[a-zA-Z0-9-]+$/ },
     ];
 
     for (const { room, pattern } of testRooms) {

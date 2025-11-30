@@ -31,13 +31,17 @@ test.describe('Authentication', () => {
       await page.getByRole('button', { name: /login|entrar|sign in/i }).click();
 
       // Should show error message
-      await expect(page.getByText(/inválido|invalid|incorreto|incorrect/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/inválido|invalid|incorreto|incorrect/i)).toBeVisible({
+        timeout: 10000,
+      });
     });
 
     test('should have link to register page', async ({ page }) => {
       await page.goto('/login');
 
-      const registerLink = page.getByRole('link', { name: /cadastr|register|sign up|criar conta/i });
+      const registerLink = page.getByRole('link', {
+        name: /cadastr|register|sign up|criar conta/i,
+      });
       await expect(registerLink).toBeVisible();
     });
   });
@@ -64,7 +68,7 @@ test.describe('Authentication', () => {
   });
 
   test.describe('Logout', () => {
-    test.skip('should logout and redirect to login', async ({ page }) => {
+    test.skip('should logout and redirect to login', async () => {
       // This test requires authentication setup
       // Skip for now - implement when auth fixtures are ready
     });

@@ -1,6 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { api, ApiError } from '../../services/api';
 
+// Type-safe access to mocked fetch
+const mockFetch = globalThis.fetch as jest.Mock;
+
 describe('API Service', () => {
   const mockResponse = (data: unknown, status = 200) => {
     return Promise.resolve({
@@ -18,13 +21,13 @@ describe('API Service', () => {
 
   describe('api.get', () => {
     it('should make GET request to correct URL', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
       await api.get('/users');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/users'),
         expect.objectContaining({ method: 'GET' })
       );
@@ -32,13 +35,13 @@ describe('API Service', () => {
 
     it('should include auth token in headers when available', async () => {
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('test-token');
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
       await api.get('/protected');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -50,41 +53,41 @@ describe('API Service', () => {
 
     it('should not include auth header when no token', async () => {
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
       await api.get('/public');
 
-      const callArgs = (global.fetch as jest.Mock).mock.calls[0][1];
+      const callArgs = mockFetch.mock.calls[0][1];
       expect(callArgs.headers.Authorization).toBeUndefined();
     });
 
     it('should add query params to URL', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
       await api.get('/users', { params: { page: 1, limit: 10 } });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('page=1'),
         expect.any(Object)
       );
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('limit=10'),
         expect.any(Object)
       );
     });
 
     it('should skip undefined params', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
       await api.get('/users', { params: { page: 1, filter: undefined } });
 
-      const url = (global.fetch as jest.Mock).mock.calls[0][0];
+      const url = mockFetch.mock.calls[0][0];
       expect(url).toContain('page=1');
       expect(url).not.toContain('filter');
     });
@@ -92,13 +95,13 @@ describe('API Service', () => {
 
   describe('api.post', () => {
     it('should make POST request with JSON body', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ id: 1 })
       );
 
       await api.post('/users', { name: 'John', email: 'john@example.com' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/users'),
         expect.objectContaining({
           method: 'POST',
@@ -108,13 +111,13 @@ describe('API Service', () => {
     });
 
     it('should set Content-Type header', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ id: 1 })
       );
 
       await api.post('/users', { name: 'John' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -125,13 +128,13 @@ describe('API Service', () => {
     });
 
     it('should handle post without body', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ success: true })
       );
 
       await api.post('/action');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/action'),
         expect.objectContaining({
           method: 'POST',
@@ -143,13 +146,13 @@ describe('API Service', () => {
 
   describe('api.put', () => {
     it('should make PUT request', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ updated: true })
       );
 
       await api.put('/users/1', { name: 'Updated' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/1'),
         expect.objectContaining({ method: 'PUT' })
       );
@@ -158,13 +161,13 @@ describe('API Service', () => {
 
   describe('api.patch', () => {
     it('should make PATCH request', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ patched: true })
       );
 
       await api.patch('/users/1', { status: 'active' });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/1'),
         expect.objectContaining({ method: 'PATCH' })
       );
@@ -173,13 +176,13 @@ describe('API Service', () => {
 
   describe('api.delete', () => {
     it('should make DELETE request', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({})
       );
 
       await api.delete('/users/1');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/1'),
         expect.objectContaining({ method: 'DELETE' })
       );
@@ -188,7 +191,7 @@ describe('API Service', () => {
 
   describe('error handling', () => {
     it('should throw ApiError on non-ok response', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: false,
           status: 401,
@@ -201,7 +204,7 @@ describe('API Service', () => {
     });
 
     it('should include status code in ApiError', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: false,
           status: 404,
@@ -219,7 +222,7 @@ describe('API Service', () => {
     });
 
     it('should handle JSON parse error in error response', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: false,
           status: 500,
@@ -234,7 +237,7 @@ describe('API Service', () => {
 
   describe('empty response handling', () => {
     it('should handle empty response body', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         Promise.resolve({
           ok: true,
           status: 204,
@@ -250,7 +253,7 @@ describe('API Service', () => {
 
   describe('SecureStore integration', () => {
     it('should get token from SecureStore', async () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 
@@ -263,7 +266,7 @@ describe('API Service', () => {
       (SecureStore.getItemAsync as jest.Mock).mockRejectedValue(
         new Error('SecureStore error')
       );
-      (global.fetch as jest.Mock).mockImplementation(() =>
+      mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
       );
 

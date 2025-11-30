@@ -85,10 +85,10 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 // Mock fetch globally
-global.fetch = jest.fn();
+(globalThis as unknown as { fetch: jest.Mock }).fetch = jest.fn();
 
 // Reset all mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();
-  (global.fetch as jest.Mock).mockReset();
+  ((globalThis as unknown as { fetch: jest.Mock }).fetch).mockReset();
 });

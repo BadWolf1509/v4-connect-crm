@@ -90,7 +90,7 @@ describe('Pipeline Schemas', () => {
         name: 'Pipeline',
         stages: [{ name: 'Stage', color: '#ff00ff' }],
       });
-      expect(result.stages[0].color).toBe('#ff00ff');
+      expect(result.stages?.[0]?.color).toBe('#ff00ff');
     });
   });
 

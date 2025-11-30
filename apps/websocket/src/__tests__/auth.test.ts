@@ -1,5 +1,9 @@
+import type { JWTDecryptResult, KeyLike, ResolvedKey } from 'jose';
 import { jwtDecrypt } from 'jose';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+// Helper type for mocked jwtDecrypt result
+type MockJWTResult = JWTDecryptResult<Record<string, unknown>> & ResolvedKey<KeyLike>;
 
 // Helper to create a verifyToken-like function for testing
 async function verifyToken(token: string, authSecret: string | undefined) {
@@ -63,7 +67,8 @@ describe('WebSocket Authentication', () => {
       vi.mocked(jwtDecrypt).mockResolvedValueOnce({
         payload: mockPayload,
         protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-      });
+        key: new Uint8Array(32),
+      } as MockJWTResult);
 
       const result = await verifyToken('valid-token', authSecret);
 
@@ -79,7 +84,8 @@ describe('WebSocket Authentication', () => {
       vi.mocked(jwtDecrypt).mockResolvedValueOnce({
         payload: { email: 'test@example.com' }, // missing id and tenantId
         protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-      });
+        key: new Uint8Array(32),
+      } as MockJWTResult);
 
       const result = await verifyToken('incomplete-token', authSecret);
       expect(result).toBeNull();
@@ -105,7 +111,8 @@ describe('WebSocket Authentication', () => {
       vi.mocked(jwtDecrypt).mockResolvedValueOnce({
         payload: mockPayload,
         protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-      });
+        key: new Uint8Array(32),
+      } as MockJWTResult);
 
       await verifyToken('token', longSecret);
 
@@ -128,7 +135,8 @@ describe('WebSocket Authentication', () => {
       vi.mocked(jwtDecrypt).mockResolvedValueOnce({
         payload: mockPayload,
         protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-      });
+        key: new Uint8Array(32),
+      } as MockJWTResult);
 
       const result = await verifyToken('valid-token', authSecret);
 
