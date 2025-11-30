@@ -37,6 +37,16 @@ coverage
 *.p12
 .vercel
 
+# Claude Code
+.claude/settings.local.json
+
+# Playwright
+playwright-report/
+test-results/
+
+# Vercel env
+.env.vercel
+
 # Mobile
 android/
 ios/
