@@ -1,4 +1,12 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+// Load .env from apps/api directory (not monorepo root)
+// Use override: true to ensure our .env takes precedence over dotenv auto-inject
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: resolve(__dirname, '../.env'), override: true });
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -7,6 +15,7 @@ import { prettyJSON } from 'hono/pretty-json';
 import { secureHeaders } from 'hono/secure-headers';
 
 import { errorHandler } from './middleware/error-handler';
+import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
 import { channelsRoutes } from './routes/channels';
 import { contactsRoutes } from './routes/contacts';
@@ -14,8 +23,10 @@ import { conversationsRoutes } from './routes/conversations';
 import { dealsRoutes } from './routes/deals';
 import { inboxesRoutes } from './routes/inboxes';
 import { messagesRoutes } from './routes/messages';
+import { metaWebhooksRoutes } from './routes/meta-webhooks';
 import { pipelinesRoutes } from './routes/pipelines';
 import { teamsRoutes } from './routes/teams';
+import { uploadRoutes } from './routes/upload';
 import { webhooksRoutes } from './routes/webhooks';
 import { whatsappRoutes } from './routes/whatsapp';
 
@@ -29,6 +40,7 @@ app.use('*', secureHeaders());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
   'https://v4-connect-crm-web.vercel.app',
   process.env.CORS_ORIGIN,
 ].filter(Boolean) as string[];
@@ -56,6 +68,7 @@ app.get('/health', (c) => {
 // API Routes
 const api = new Hono();
 
+api.route('/analytics', analyticsRoutes);
 api.route('/auth', authRoutes);
 api.route('/channels', channelsRoutes);
 api.route('/contacts', contactsRoutes);
@@ -65,11 +78,15 @@ api.route('/messages', messagesRoutes);
 api.route('/pipelines', pipelinesRoutes);
 api.route('/deals', dealsRoutes);
 api.route('/teams', teamsRoutes);
+api.route('/upload', uploadRoutes);
 api.route('/webhooks', webhooksRoutes);
 api.route('/whatsapp', whatsappRoutes);
 
 // Mount API under /api/v1
 app.route('/api/v1', api);
+
+// Meta webhooks (mounted directly for Meta verification)
+app.route('/meta', metaWebhooksRoutes);
 
 // 404 handler
 app.notFound((c) => {
@@ -82,7 +99,7 @@ app.notFound((c) => {
   );
 });
 
-const port = Number.parseInt(process.env.PORT || '3002', 10);
+const port = Number.parseInt(process.env.PORT || '3001', 10);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

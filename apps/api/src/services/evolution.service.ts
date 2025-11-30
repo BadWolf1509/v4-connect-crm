@@ -5,8 +5,14 @@
  * Documentation: https://doc.evolution-api.com/
  */
 
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
+// Lazy getters to ensure env vars are read AFTER dotenv loads
+function getEvolutionApiUrl(): string {
+  return process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+}
+
+function getEvolutionApiKey(): string {
+  return process.env.EVOLUTION_API_KEY || '';
+}
 
 interface EvolutionResponse<T = unknown> {
   success: boolean;
@@ -69,12 +75,15 @@ async function evolutionFetch<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<EvolutionResponse<T>> {
+  const apiUrl = getEvolutionApiUrl();
+  const apiKey = getEvolutionApiKey();
+
   try {
-    const response = await fetch(`${EVOLUTION_API_URL}${endpoint}`, {
+    const response = await fetch(`${apiUrl}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        apikey: EVOLUTION_API_KEY,
+        apikey: apiKey,
         ...options.headers,
       },
     });

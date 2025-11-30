@@ -4,6 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { type AppType, requireAuth } from '../middleware/auth';
 import { channelsService } from '../services/channels.service';
+import { evolutionService } from '../services/evolution.service';
 
 const channelsRoutes = new Hono<AppType>();
 
@@ -23,7 +24,7 @@ const updateChannelSchema = z.object({
   config: z.record(z.any()).optional(),
 });
 
-// List channels
+// List channels with real-time status from providers
 channelsRoutes.get('/', async (c) => {
   const auth = c.get('auth');
   const { type, isActive } = c.req.query();
@@ -34,7 +35,39 @@ channelsRoutes.get('/', async (c) => {
     isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
   });
 
-  return c.json({ data: result.channels });
+  // Enrich WhatsApp channels with real-time status from Evolution API
+  const enrichedChannels = await Promise.all(
+    result.channels.map(async (channel) => {
+      if (channel.type === 'whatsapp' && channel.provider === 'evolution') {
+        const instanceName = (channel.config as { instanceName?: string })?.instanceName;
+
+        if (instanceName) {
+          try {
+            const stateResult = await evolutionService.getInstanceState(instanceName);
+
+            if (stateResult.success && stateResult.data?.instance) {
+              const isConnected = stateResult.data.instance.state === 'open';
+
+              // Update database if status changed
+              if (isConnected !== channel.isActive) {
+                if (isConnected) {
+                  await channelsService.connect(channel.id, auth.tenantId);
+                } else {
+                  await channelsService.disconnect(channel.id, auth.tenantId);
+                }
+                return { ...channel, isActive: isConnected, connectedAt: isConnected ? new Date() : null };
+              }
+            }
+          } catch (err) {
+            console.warn(`Failed to get status for channel ${channel.id}:`, err);
+          }
+        }
+      }
+      return channel;
+    }),
+  );
+
+  return c.json({ data: enrichedChannels });
 });
 
 // Get channel by ID
