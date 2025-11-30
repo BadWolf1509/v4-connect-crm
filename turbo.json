@@ -41,6 +41,9 @@
     "SUPABASE_*",
     "OPENAI_*",
     "EVOLUTION_*",
-    "META_*"
+    "META_*",
+    "AUTH_SECRET",
+    "AUTH_URL",
+    "API_URL"
   ]
 }
