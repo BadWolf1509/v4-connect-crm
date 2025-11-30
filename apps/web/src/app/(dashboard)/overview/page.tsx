@@ -171,11 +171,12 @@ function RecentConversationsList({
 }
 
 export default function DashboardPage() {
-  const { api } = useApi();
+  const { api, isAuthenticated } = useApi();
 
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ['analytics', 'overview'],
     queryFn: () => api.get<AnalyticsOverview>('/analytics/overview'),
+    enabled: isAuthenticated,
   });
 
   const { data: dailyData, isLoading: dailyLoading } = useQuery({
@@ -184,6 +185,7 @@ export default function DashboardPage() {
       api.get<{ data: DailyConversation[] }>('/analytics/conversations/daily', {
         params: { days: 7 },
       }),
+    enabled: isAuthenticated,
   });
 
   const { data: recentData, isLoading: recentLoading } = useQuery({
@@ -192,9 +194,10 @@ export default function DashboardPage() {
       api.get<{ data: RecentConversation[] }>('/analytics/conversations/recent', {
         params: { limit: 5 },
       }),
+    enabled: isAuthenticated,
   });
 
-  const isLoading = overviewLoading || dailyLoading || recentLoading;
+  const isLoading = !isAuthenticated || overviewLoading || dailyLoading || recentLoading;
 
   if (isLoading) {
     return (

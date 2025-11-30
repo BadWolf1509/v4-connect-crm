@@ -19,7 +19,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/' as Route, icon: BarChart3 },
+  { name: 'Dashboard', href: '/overview' as Route, icon: BarChart3 },
   { name: 'Inbox', href: '/inbox' as Route, icon: MessageSquare },
   { name: 'Contatos', href: '/contacts' as Route, icon: Users },
   { name: 'CRM', href: '/crm' as Route, icon: Kanban },

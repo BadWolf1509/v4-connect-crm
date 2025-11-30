@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev --turbo -p 3002",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3002",
     "lint": "biome check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -40,14 +46,23 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.10.2",
     "@types/react": "19.0.1",
     "@types/react-dom": "19.0.2",
     "@v4-connect/typescript": "workspace:*",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.1",
+    "msw": "^2.7.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

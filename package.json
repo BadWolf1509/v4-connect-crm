@@ -13,14 +13,13 @@
     "clean": "turbo clean && rm -rf node_modules",
     "test": "turbo test",
     "test:coverage": "turbo test:coverage",
-    "db:generate": "pnpm --filter @v4/database generate",
-    "db:migrate": "pnpm --filter @v4/database migrate",
-    "db:push": "pnpm --filter @v4/database push",
-    "db:studio": "pnpm --filter @v4/database studio"
+    "db:generate": "pnpm --filter @v4-connect/database db:generate",
+    "db:migrate": "pnpm --filter @v4-connect/database db:migrate",
+    "db:push": "pnpm --filter @v4-connect/database db:push",
+    "db:studio": "pnpm --filter @v4-connect/database db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "next": "^15.1.0",
     "turbo": "^2.3.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
@@ -29,7 +28,9 @@
   "pnpm": {
     "overrides": {
       "@types/react": "^19.0.1",
-      "@types/react-dom": "^19.0.2"
+      "@types/react-dom": "^19.0.2",
+      "react": "19.0.0",
+      "react-dom": "19.0.0"
     }
   },
   "engines": {

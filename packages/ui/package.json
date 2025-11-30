@@ -20,7 +20,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "biome check src",
-    "lint:fix": "biome check --write src"
+    "lint:fix": "biome check --write src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
@@ -36,10 +39,19 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
     "@v4-connect/typescript": "workspace:*",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "jsdom": "^25.0.1",
     "react": "^19.0.0",
-    "typescript": "^5.7.2"
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockConversation, createMockMessage } from '../mocks/db.mock';
+import { createMockChannel, createMockConversation, createMockMessage } from '../mocks/db.mock';
 
 // Mock the services
 const mockMessagesService = {
@@ -22,6 +22,26 @@ const mockSocketEventsService = {
   emitNewMessage: vi.fn(),
 };
 
+const mockChannelsService = {
+  findById: vi.fn(),
+  findByTenant: vi.fn(),
+};
+
+const mockEvolutionService = {
+  sendText: vi.fn(),
+  sendImage: vi.fn(),
+  sendAudio: vi.fn(),
+  sendDocument: vi.fn(),
+  sendMedia: vi.fn(),
+};
+
+const mockMetaService = {
+  sendInstagramText: vi.fn(),
+  sendInstagramMedia: vi.fn(),
+  sendMessengerText: vi.fn(),
+  sendMessengerMedia: vi.fn(),
+};
+
 vi.mock('../../services/messages.service', () => ({
   messagesService: mockMessagesService,
 }));
@@ -32,6 +52,18 @@ vi.mock('../../services/conversations.service', () => ({
 
 vi.mock('../../services/socket-events.service', () => ({
   socketEventsService: mockSocketEventsService,
+}));
+
+vi.mock('../../services/channels.service', () => ({
+  channelsService: mockChannelsService,
+}));
+
+vi.mock('../../services/evolution.service', () => ({
+  evolutionService: mockEvolutionService,
+}));
+
+vi.mock('../../services/meta.service', () => ({
+  metaService: mockMetaService,
 }));
 
 // Import after mocking
@@ -130,7 +162,9 @@ describe('Messages Routes', () => {
     it('should create a new text message', async () => {
       const mockMessage = createMockMessage();
       mockConversationsService.findById.mockResolvedValue(createMockConversation());
+      mockChannelsService.findById.mockResolvedValue(createMockChannel());
       mockMessagesService.create.mockResolvedValue(mockMessage);
+      mockMessagesService.update.mockResolvedValue(mockMessage);
       mockConversationsService.update.mockResolvedValue(createMockConversation());
       mockSocketEventsService.emitNewMessage.mockResolvedValue(undefined);
 
@@ -201,7 +235,9 @@ describe('Messages Routes', () => {
         mediaUrl: 'https://example.com/image.jpg',
       });
       mockConversationsService.findById.mockResolvedValue(createMockConversation());
+      mockChannelsService.findById.mockResolvedValue(createMockChannel());
       mockMessagesService.create.mockResolvedValue(mockMessage);
+      mockMessagesService.update.mockResolvedValue(mockMessage);
       mockConversationsService.update.mockResolvedValue(createMockConversation());
       mockSocketEventsService.emitNewMessage.mockResolvedValue(undefined);
 

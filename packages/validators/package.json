@@ -7,13 +7,18 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@v4-connect/typescript": "workspace:*",
-    "typescript": "^5.7.2"
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
