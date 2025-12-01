@@ -21,8 +21,7 @@ let subClient: Redis | null = null;
 const io = new Server(httpServer, {
   cors: {
     origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
+      'http://localhost:3002',
       'https://v4-connect-crm-web.vercel.app',
       process.env.FRONTEND_URL || '',
     ].filter(Boolean),

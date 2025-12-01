@@ -117,11 +117,11 @@ DATABASE_URL="postgresql://..."
 
 # Auth.js
 AUTH_SECRET="seu-secret-aqui"
-AUTH_URL="http://localhost:3000"
+AUTH_URL="http://localhost:3002"
 
 # API URLs
-NEXT_PUBLIC_API_URL="http://localhost:3002"
-API_URL="http://localhost:3002"
+NEXT_PUBLIC_API_URL="http://localhost:3001"
+API_URL="http://localhost:3001"
 ```
 
 ---

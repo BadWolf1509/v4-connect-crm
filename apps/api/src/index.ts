@@ -1,11 +1,6 @@
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
+// MUST be first import - loads environment variables before other modules
+import './env';
 
-// Load .env from monorepo root (single source of truth)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: resolve(__dirname, '../../../.env') });
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -22,11 +17,16 @@ import { chatbotsRoutes } from './routes/chatbots';
 import { contactsRoutes } from './routes/contacts';
 import { conversationsRoutes } from './routes/conversations';
 import { dealsRoutes } from './routes/deals';
+import { importRoutes } from './routes/import';
 import { inboxesRoutes } from './routes/inboxes';
+import { inviteAcceptRoutes } from './routes/invite-accept';
+import { invitesRoutes } from './routes/invites';
 import { messagesRoutes } from './routes/messages';
 import { metaWebhooksRoutes } from './routes/meta-webhooks';
+import { notificationsRoutes } from './routes/notifications';
 import { pipelinesRoutes } from './routes/pipelines';
 import { quickRepliesRoutes } from './routes/quick-replies';
+import { tagsRoutes } from './routes/tags';
 import { teamsRoutes } from './routes/teams';
 import { uploadRoutes } from './routes/upload';
 import { usersRoutes } from './routes/users';
@@ -40,13 +40,15 @@ app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', secureHeaders());
 // CORS - allow Vercel and localhost
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'https://v4-connect-crm-web.vercel.app',
-  process.env.CORS_ORIGIN,
-].filter(Boolean) as string[];
+const allowedOrigins = (
+  [
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:3003',
+    'https://v4-connect-crm-web.vercel.app',
+    process.env.CORS_ORIGIN,
+  ] as const
+).filter(Boolean) as string[];
 
 app.use(
   '*',
@@ -79,18 +81,25 @@ api.route('/conversations', conversationsRoutes);
 api.route('/campaigns', campaignsRoutes);
 api.route('/chatbots', chatbotsRoutes);
 api.route('/inboxes', inboxesRoutes);
+api.route('/invites', invitesRoutes);
 api.route('/messages', messagesRoutes);
 api.route('/pipelines', pipelinesRoutes);
 api.route('/deals', dealsRoutes);
+api.route('/import', importRoutes);
 api.route('/quick-replies', quickRepliesRoutes);
+api.route('/tags', tagsRoutes);
 api.route('/teams', teamsRoutes);
 api.route('/upload', uploadRoutes);
 api.route('/users', usersRoutes);
 api.route('/webhooks', webhooksRoutes);
+api.route('/notifications', notificationsRoutes);
 api.route('/whatsapp', whatsappRoutes);
 
 // Mount API under /api/v1
 app.route('/api/v1', api);
+
+// Public invite acceptance routes (no auth required)
+app.route('/api/v1/invite', inviteAcceptRoutes);
 
 // Meta webhooks (mounted directly for Meta verification)
 app.route('/meta', metaWebhooksRoutes);
