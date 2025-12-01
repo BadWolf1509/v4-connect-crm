@@ -34,7 +34,7 @@ vi.mock('next-auth/react', () => ({
 }));
 
 // Mock environment variables
-vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:3002');
+vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:3001');
 vi.stubEnv('NEXT_PUBLIC_WS_URL', 'http://localhost:3003');
 
 // Mock fetch globally

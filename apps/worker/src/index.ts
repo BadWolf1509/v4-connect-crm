@@ -1,4 +1,6 @@
-import 'dotenv/config';
+// MUST be first import - loads environment variables before other modules
+import './env';
+
 import { Redis } from 'ioredis';
 import { aiWorker } from './queues/ai-queue';
 import { campaignWorker } from './queues/campaign-queue';

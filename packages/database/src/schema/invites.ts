@@ -1,9 +1,14 @@
 import { relations } from 'drizzle-orm';
 import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
-import { users, userRoleEnum } from './users';
+import { userRoleEnum, users } from './users';
 
-export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 'expired', 'revoked']);
+export const inviteStatusEnum = pgEnum('invite_status', [
+  'pending',
+  'accepted',
+  'expired',
+  'revoked',
+]);
 
 export const invites = pgTable('invites', {
   id: uuid('id').primaryKey().defaultRandom(),

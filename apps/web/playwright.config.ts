@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const authFile = 'e2e/.auth/user.json';
+
 /**
  * V4 Connect CRM - Playwright E2E Test Configuration
  * @see https://playwright.dev/docs/test-configuration
@@ -22,27 +24,66 @@ export default defineConfig({
     video: 'on-first-retry',
   },
   projects: [
-    // Desktop browsers
+    // Setup project - runs first to authenticate
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+
+    // Desktop browsers - depend on setup
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+      testIgnore: /.*\.setup\.ts/,
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+      testIgnore: /.*\.setup\.ts/,
     },
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+      testIgnore: /.*\.setup\.ts/,
     },
-    // Mobile viewports
+
+    // Mobile viewports - depend on setup
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      use: {
+        ...devices['Pixel 5'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+      testIgnore: /.*\.setup\.ts/,
     },
     {
       name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
+      use: {
+        ...devices['iPhone 12'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+      testIgnore: /.*\.setup\.ts/,
+    },
+
+    // No-auth project for login/register tests
+    {
+      name: 'chromium-no-auth',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /auth\.spec\.ts/,
     },
   ],
   webServer: {

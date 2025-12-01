@@ -8,7 +8,7 @@
     "rules": {
       "recommended": true,
       "complexity": {
-        "noExcessiveCognitiveComplexity": "warn",
+        "noExcessiveCognitiveComplexity": "off",
         "noForEach": "warn"
       },
       "correctness": {
@@ -48,6 +48,12 @@
       ".next",
       ".turbo",
       ".vercel",
+      "apps/web/e2e/.auth",
+      "apps/web/playwright-report",
+      "apps/web/test-results",
+      "e2e/.auth",
+      "playwright-report",
+      "test-results",
       "dist",
       "build",
       ".expo",

@@ -159,7 +159,6 @@ async function publishSocketEvent(event: {
   }
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Provider-specific send paths require branching
 async function sendMessage(data: SendMessageJob) {
   const { channels, conversations, contacts, messages } = schema;
 

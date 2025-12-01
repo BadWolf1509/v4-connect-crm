@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 
+// Auth tests run without storage state (no-auth project)
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe('Authentication', () => {
   test.describe('Login Page', () => {
     test('should display login form', async ({ page }) => {
@@ -7,27 +10,31 @@ test.describe('Authentication', () => {
 
       // Check for login form elements
       await expect(page.getByRole('heading', { name: /login|entrar/i })).toBeVisible();
-      await expect(page.getByLabel(/email/i)).toBeVisible();
-      await expect(page.getByLabel(/senha|password/i)).toBeVisible();
+      await expect(page.locator('input[name="email"]')).toBeVisible();
+      await expect(page.locator('input[name="password"]')).toBeVisible();
       await expect(page.getByRole('button', { name: /login|entrar|sign in/i })).toBeVisible();
     });
 
     test('should show validation errors for empty form', async ({ page }) => {
       await page.goto('/login');
 
-      // Submit empty form
+      // Get the email input
+      const emailInput = page.locator('input[name="email"]');
+
+      // Submit empty form - HTML5 validation should prevent submission
       await page.getByRole('button', { name: /login|entrar|sign in/i }).click();
 
-      // Should show validation errors
-      await expect(page.getByText(/email.*obrigatório|email.*required/i)).toBeVisible();
+      // Check that the email input is invalid (HTML5 validation)
+      const isInvalid = await emailInput.evaluate((el: HTMLInputElement) => !el.validity.valid);
+      expect(isInvalid).toBe(true);
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
       await page.goto('/login');
 
       // Fill with invalid credentials
-      await page.getByLabel(/email/i).fill('invalid@example.com');
-      await page.getByLabel(/senha|password/i).fill('wrongpassword');
+      await page.locator('input[name="email"]').fill('invalid@example.com');
+      await page.locator('input[name="password"]').fill('wrongpassword');
       await page.getByRole('button', { name: /login|entrar|sign in/i }).click();
 
       // Should show error message
@@ -43,6 +50,18 @@ test.describe('Authentication', () => {
         name: /cadastr|register|sign up|criar conta/i,
       });
       await expect(registerLink).toBeVisible();
+    });
+
+    test('should login successfully with valid credentials', async ({ page }) => {
+      await page.goto('/login');
+
+      // Fill with valid credentials
+      await page.locator('input[name="email"]').fill('admin@v4connect.com');
+      await page.locator('input[name="password"]').fill('password123');
+      await page.getByRole('button', { name: /login|entrar|sign in/i }).click();
+
+      // Should redirect to dashboard/inbox
+      await expect(page).toHaveURL(/\/(inbox|overview|dashboard)/, { timeout: 15000 });
     });
   });
 
@@ -64,13 +83,6 @@ test.describe('Authentication', () => {
       await page.goto('/crm');
 
       await expect(page).toHaveURL(/login/);
-    });
-  });
-
-  test.describe('Logout', () => {
-    test.skip('should logout and redirect to login', async () => {
-      // This test requires authentication setup
-      // Skip for now - implement when auth fixtures are ready
     });
   });
 });

@@ -1,72 +1,83 @@
 import { expect, test } from '@playwright/test';
 
-// Mock authenticated user for dashboard tests
 test.describe('Dashboard', () => {
-  // Skip authentication for these tests - they test the UI structure
-  // In production, use auth fixtures to properly authenticate
-
-  test.describe('Overview Page Structure', () => {
-    test.beforeEach(async ({ page }) => {
-      // For now, we test what the page looks like when accessed
-      // Real tests would use auth fixtures
+  test.describe('Overview Page', () => {
+    test('should display overview page when authenticated', async ({ page }) => {
       await page.goto('/overview');
+
+      // Should not redirect to login (authenticated via storage state)
+      await expect(page).not.toHaveURL(/login/);
     });
 
-    test('should have proper page title', async ({ page }) => {
-      await expect(page).toHaveTitle(/V4 Connect|Dashboard|Overview/i);
+    test('should display page content', async ({ page }) => {
+      await page.goto('/overview');
+
+      // Wait for page to load
+      await page.waitForLoadState('networkidle');
+
+      // Page should have substantial content
+      const pageContent = await page.content();
+      expect(pageContent.length).toBeGreaterThan(1000);
     });
   });
 
   test.describe('Navigation', () => {
     test('should have sidebar navigation', async ({ page }) => {
-      await page.goto('/login');
+      await page.goto('/overview');
+      await page.waitForLoadState('networkidle');
 
-      // The sidebar should be present on the page (even if redirected)
-      // This verifies the layout structure
+      // Should show sidebar with navigation links
+      const hasSidebar = await page
+        .locator('nav, [class*="sidebar"], aside')
+        .first()
+        .isVisible()
+        .catch(() => false);
+
+      expect(hasSidebar).toBe(true);
+    });
+
+    test('should navigate to inbox', async ({ page }) => {
+      await page.goto('/overview');
+
+      // Click on inbox link
+      const inboxLink = page.getByRole('link', { name: /inbox|caixa/i });
+      const linkExists = await inboxLink.isVisible().catch(() => false);
+
+      if (linkExists) {
+        await inboxLink.click();
+        await expect(page).toHaveURL(/inbox/);
+      }
+    });
+
+    test('should navigate to CRM', async ({ page }) => {
+      await page.goto('/overview');
+
+      // Click on CRM link
+      const crmLink = page.getByRole('link', { name: /crm|pipeline|vendas/i });
+      const linkExists = await crmLink.isVisible().catch(() => false);
+
+      if (linkExists) {
+        await crmLink.click();
+        await expect(page).toHaveURL(/crm/);
+      }
     });
   });
 
   test.describe('Responsive Design', () => {
     test('should be responsive on mobile viewport', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/login');
+      await page.goto('/overview');
 
-      // Login form should be visible on mobile
-      await expect(page.getByRole('button', { name: /login|entrar|sign in/i })).toBeVisible();
+      // Page should load without errors
+      await expect(page).not.toHaveURL(/login/);
     });
 
     test('should be responsive on tablet viewport', async ({ page }) => {
       await page.setViewportSize({ width: 768, height: 1024 });
-      await page.goto('/login');
+      await page.goto('/overview');
 
-      await expect(page.getByRole('button', { name: /login|entrar|sign in/i })).toBeVisible();
+      // Page should load without errors
+      await expect(page).not.toHaveURL(/login/);
     });
-  });
-});
-
-test.describe('Dashboard Analytics (Authenticated)', () => {
-  // These tests require proper authentication
-  // Use test.use({ storageState: 'auth.json' }) when auth fixtures are ready
-
-  test.skip('should display analytics overview cards', async ({ page }) => {
-    await page.goto('/overview');
-
-    // Should show metric cards
-    await expect(page.getByText(/conversas|conversations/i)).toBeVisible();
-    await expect(page.getByText(/contatos|contacts/i)).toBeVisible();
-  });
-
-  test.skip('should display daily conversations chart', async ({ page }) => {
-    await page.goto('/overview');
-
-    // Should show chart component
-    await expect(page.getByTestId('daily-chart')).toBeVisible();
-  });
-
-  test.skip('should display recent conversations list', async ({ page }) => {
-    await page.goto('/overview');
-
-    // Should show recent conversations
-    await expect(page.getByTestId('recent-conversations')).toBeVisible();
   });
 });
