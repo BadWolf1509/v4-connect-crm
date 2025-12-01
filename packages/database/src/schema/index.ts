@@ -14,3 +14,6 @@ export * from './deals';
 export * from './campaigns';
 export * from './chatbots';
 export * from './quick-replies';
+export * from './invites';
+export * from './tags';
+export * from './notifications';

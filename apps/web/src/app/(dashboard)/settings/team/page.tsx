@@ -4,10 +4,14 @@ import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Clock,
+  Copy,
   Crown,
   Loader2,
+  Mail,
   MoreVertical,
   Plus,
+  RefreshCw,
   Shield,
   Trash2,
   User,
@@ -37,6 +41,20 @@ interface Team {
   createdAt: string;
 }
 
+interface Invite {
+  id: string;
+  email: string;
+  role: 'owner' | 'admin' | 'agent';
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  expiresAt: string;
+  createdAt: string;
+  invitedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
 const roleLabels: Record<string, string> = {
   owner: 'Proprietario',
   admin: 'Administrador',
@@ -62,6 +80,7 @@ export default function TeamSettingsPage() {
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [inviteMenuOpen, setInviteMenuOpen] = useState<string | null>(null);
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -77,8 +96,61 @@ export default function TeamSettingsPage() {
     enabled: isAuthenticated,
   });
 
+  // Fetch invites
+  const { data: invitesData, isLoading: invitesLoading } = useQuery({
+    queryKey: ['invites'],
+    queryFn: () => api.get<{ invites: Invite[] }>('/invites'),
+    enabled: isAuthenticated,
+  });
+
   const users = usersData?.users || [];
   const teams = teamsData?.teams || [];
+  const invites = invitesData?.invites || [];
+  const pendingInvites = invites.filter((i) => i.status === 'pending');
+
+  // Create invite mutation
+  const createInviteMutation = useMutation({
+    mutationFn: (data: { email: string; role: 'admin' | 'agent' }) =>
+      api.post<{ invite: Invite; inviteUrl: string }>('/invites', data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
+      toast.success('Convite enviado com sucesso');
+      // Copy invite URL to clipboard
+      navigator.clipboard.writeText(data.inviteUrl);
+      toast.info('Link do convite copiado para a área de transferência');
+      setShowInviteModal(false);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erro ao enviar convite');
+    },
+  });
+
+  // Resend invite mutation
+  const resendInviteMutation = useMutation({
+    mutationFn: (inviteId: string) =>
+      api.post<{ invite: Invite; inviteUrl: string }>(`/invites/${inviteId}/resend`, {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
+      toast.success('Convite reenviado');
+      navigator.clipboard.writeText(data.inviteUrl);
+      toast.info('Novo link copiado para a área de transferência');
+    },
+    onError: () => {
+      toast.error('Erro ao reenviar convite');
+    },
+  });
+
+  // Revoke invite mutation
+  const revokeInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => api.delete(`/invites/${inviteId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invites'] });
+      toast.success('Convite revogado');
+    },
+    onError: () => {
+      toast.error('Erro ao revogar convite');
+    },
+  });
 
   // Create team mutation
   const createTeamMutation = useMutation({
@@ -104,6 +176,23 @@ export default function TeamSettingsPage() {
       toast.error('Erro ao excluir equipe');
     },
   });
+
+  const handleCreateInvite = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const role = formData.get('role') as 'admin' | 'agent';
+
+      if (!email.trim()) {
+        toast.error('Email é obrigatório');
+        return;
+      }
+
+      createInviteMutation.mutate({ email, role });
+    },
+    [createInviteMutation],
+  );
 
   const handleCreateTeam = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -146,7 +235,19 @@ export default function TeamSettingsPage() {
     return `${days}d atrás`;
   };
 
-  if (usersLoading || teamsLoading) {
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const isExpired = (expiresAt: string) => {
+    return new Date() > new Date(expiresAt);
+  };
+
+  if (usersLoading || teamsLoading || invitesLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-v4-red-500" />
@@ -287,6 +388,124 @@ export default function TeamSettingsPage() {
         </div>
       </div>
 
+      {/* Pending Invites Section */}
+      {pendingInvites.length > 0 && (
+        <div className="rounded-xl border border-gray-800 bg-gray-900/50">
+          <div className="flex items-center justify-between border-b border-gray-800 p-4">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-gray-400" />
+              <h2 className="font-semibold text-white">
+                Convites Pendentes ({pendingInvites.length})
+              </h2>
+            </div>
+          </div>
+
+          <div className="divide-y divide-gray-800">
+            {pendingInvites.map((invite) => {
+              const expired = isExpired(invite.expiresAt);
+              return (
+                <div
+                  key={invite.id}
+                  className="flex items-center justify-between p-4 hover:bg-gray-800/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-700">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white">{invite.email}</div>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>Convidado por {invite.invitedBy?.name || 'Sistema'}</span>
+                        <span>•</span>
+                        <span>{formatDate(invite.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+                        roleColors[invite.role],
+                      )}
+                    >
+                      {roleLabels[invite.role]}
+                    </div>
+
+                    {expired ? (
+                      <div className="flex items-center gap-1 text-xs text-red-400">
+                        <Clock className="h-3.5 w-3.5" />
+                        Expirado
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <Clock className="h-3.5 w-3.5" />
+                        Expira em {formatDate(invite.expiresAt)}
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setInviteMenuOpen(inviteMenuOpen === invite.id ? null : invite.id)
+                        }
+                        className="rounded-lg p-2 text-gray-400 hover:bg-gray-700 hover:text-white"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {inviteMenuOpen === invite.id && (
+                        <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-gray-700 bg-gray-800 py-1 shadow-xl">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              resendInviteMutation.mutate(invite.id);
+                              setInviteMenuOpen(null);
+                            }}
+                            disabled={resendInviteMutation.isPending}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Reenviar convite
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // We don't have the token here, but we can construct a placeholder
+                              toast.info('Use o botão Reenviar para obter um novo link');
+                              setInviteMenuOpen(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                          >
+                            <Copy className="h-4 w-4" />
+                            Copiar link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm('Deseja revogar este convite?')) {
+                                revokeInviteMutation.mutate(invite.id);
+                              }
+                              setInviteMenuOpen(null);
+                            }}
+                            disabled={revokeInviteMutation.isPending}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-gray-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Revogar convite
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Teams Section */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/50">
         <div className="flex items-center justify-between border-b border-gray-800 p-4">
@@ -359,14 +578,7 @@ export default function TeamSettingsPage() {
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                toast.info('Funcionalidade de convite em desenvolvimento');
-                setShowInviteModal(false);
-              }}
-              className="mt-6 space-y-4"
-            >
+            <form onSubmit={handleCreateInvite} className="mt-6 space-y-4">
               <div>
                 <label htmlFor="invite-email" className="block text-sm font-medium text-gray-300">
                   Email
@@ -388,12 +600,18 @@ export default function TeamSettingsPage() {
                 <select
                   id="invite-role"
                   name="role"
+                  defaultValue="agent"
                   className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white focus:border-v4-red-500 focus:outline-none"
                 >
                   <option value="agent">Agente</option>
                   <option value="admin">Administrador</option>
                 </select>
               </div>
+
+              <p className="text-xs text-gray-400">
+                Um link de convite será gerado e copiado para sua área de transferência. O convite
+                expira em 7 dias.
+              </p>
 
               <div className="flex justify-end gap-3 pt-4">
                 <button
@@ -405,9 +623,11 @@ export default function TeamSettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-v4-red-600"
+                  disabled={createInviteMutation.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-v4-red-600 disabled:opacity-50"
                 >
-                  Enviar Convite
+                  {createInviteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Criar Convite
                 </button>
               </div>
             </form>
