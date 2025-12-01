@@ -3,6 +3,7 @@
 import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import {
+  Download,
   Loader2,
   Mail,
   MoreVertical,
@@ -11,11 +12,13 @@ import {
   Search,
   Tag,
   Trash2,
+  Upload,
   User,
   UserPlus,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Contact {
   id: string;
@@ -43,12 +46,20 @@ export default function ContactsPage() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    tags: [] as string[],
+  });
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [tagInput, setTagInput] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get unique tags from all contacts
   const allTags = Array.from(new Set(contacts.flatMap((c) => c.tags || [])));
@@ -92,21 +103,144 @@ export default function ContactsPage() {
         name: contact.name,
         email: contact.email || '',
         phone: contact.phone || '',
+        tags: contact.tags || [],
       });
     } else {
       setEditingContact(null);
-      setFormData({ name: '', email: '', phone: '' });
+      setFormData({ name: '', email: '', phone: '', tags: [] });
     }
     setFormError(null);
+    setTagInput('');
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingContact(null);
-    setFormData({ name: '', email: '', phone: '' });
+    setFormData({ name: '', email: '', phone: '', tags: [] });
     setFormError(null);
+    setTagInput('');
   };
+
+  const handleAddTag = () => {
+    const tag = tagInput.trim().toLowerCase();
+    if (tag && !formData.tags.includes(tag)) {
+      setFormData({ ...formData, tags: [...formData.tags, tag] });
+    }
+    setTagInput('');
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tagToRemove) });
+  };
+
+  // Export contacts to CSV
+  const handleExportContacts = useCallback(() => {
+    if (contacts.length === 0) {
+      toast.error('Nenhum contato para exportar');
+      return;
+    }
+
+    const headers = ['Nome', 'Email', 'Telefone', 'Tags', 'Data de Criação'];
+    const rows = contacts.map((c) => [
+      c.name,
+      c.email || '',
+      c.phone || '',
+      (c.tags || []).join(';'),
+      new Date(c.createdAt).toLocaleDateString('pt-BR'),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contatos-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('Contatos exportados com sucesso');
+  }, [contacts]);
+
+  // Import contacts from CSV
+  const handleImportContacts = useCallback(
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: CSV import parsing logic
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setImporting(true);
+
+      try {
+        const text = await file.text();
+        const lines = text.split('\n').filter((line) => line.trim());
+
+        // Skip header row
+        const dataLines = lines.slice(1);
+
+        const contactsToImport: Array<{
+          name: string;
+          email?: string;
+          phone?: string;
+          tags?: string[];
+        }> = [];
+
+        for (const line of dataLines) {
+          // Parse CSV (simple parsing, handles quoted values)
+          const values =
+            line
+              .match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)
+              ?.map((v) => v.replace(/^"|"$/g, '').trim()) || [];
+
+          if (values[0]) {
+            contactsToImport.push({
+              name: values[0],
+              email: values[1] || undefined,
+              phone: values[2] || undefined,
+              tags: values[3]
+                ? values[3]
+                    .split(';')
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                : undefined,
+            });
+          }
+        }
+
+        if (contactsToImport.length === 0) {
+          toast.error('Nenhum contato válido encontrado no arquivo');
+          return;
+        }
+
+        // Import contacts in batches
+        let imported = 0;
+        for (const contact of contactsToImport) {
+          try {
+            await api.post('/contacts', contact);
+            imported++;
+          } catch (err) {
+            console.error('Error importing contact:', contact.name, err);
+          }
+        }
+
+        toast.success(`${imported} contato(s) importado(s) com sucesso`);
+        fetchContacts();
+      } catch (err) {
+        console.error('Import error:', err);
+        toast.error('Erro ao importar contatos');
+      } finally {
+        setImporting(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    },
+    [api, fetchContacts],
+  );
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -171,14 +305,48 @@ export default function ContactsPage() {
             {total} contato{total !== 1 ? 's' : ''} cadastrado{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-v4-red-600"
-        >
-          <UserPlus className="h-4 w-4" />
-          Novo Contato
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Import */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImportContacts}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50"
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            Importar
+          </button>
+          {/* Export */}
+          <button
+            type="button"
+            onClick={handleExportContacts}
+            disabled={contacts.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Exportar
+          </button>
+          {/* New Contact */}
+          <button
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-v4-red-600"
+          >
+            <UserPlus className="h-4 w-4" />
+            Novo Contato
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -473,6 +641,82 @@ export default function ContactsPage() {
                   placeholder="+55 11 99999-9999"
                   className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label htmlFor="tags" className="mb-2 block text-sm font-medium text-gray-300">
+                  Tags
+                </label>
+                <div className="space-y-2">
+                  {/* Tags display */}
+                  {formData.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2 py-1 text-xs text-gray-300"
+                        >
+                          <Tag className="h-3 w-3" />
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="ml-1 text-gray-500 hover:text-white"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Tag input */}
+                  <div className="flex gap-2">
+                    <input
+                      id="tags"
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTag();
+                        }
+                      }}
+                      placeholder="Digite uma tag e pressione Enter"
+                      className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTag}
+                      disabled={!tagInput.trim()}
+                      className="rounded-lg border border-gray-700 px-3 py-2 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {/* Tag suggestions */}
+                  {allTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-xs text-gray-500 mr-1">Sugestões:</span>
+                      {allTags
+                        .filter((tag) => !formData.tags.includes(tag))
+                        .slice(0, 5)
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() =>
+                              setFormData({ ...formData, tags: [...formData.tags, tag] })
+                            }
+                            className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400 hover:bg-gray-700 hover:text-white"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {formError && <p className="text-sm text-red-400">{formError}</p>}

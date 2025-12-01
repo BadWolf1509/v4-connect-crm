@@ -4,8 +4,9 @@ import { DealDrawer, DealModal } from '@/components/crm';
 import { useApi } from '@/hooks/use-api';
 import type { Deal, Pipeline, Stage } from '@/lib/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, MoreHorizontal, Plus, User } from 'lucide-react';
+import { DollarSign, Loader2, MoreHorizontal, Plus, Search, User, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 interface PipelinesResponse {
   pipelines: Pipeline[];
@@ -180,6 +181,16 @@ export default function CRMPage() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [presetStageId, setPresetStageId] = useState<string | null>(null);
 
+  // Pipeline and Stage modal states
+  const [showPipelineModal, setShowPipelineModal] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState('');
+  const [showStageModal, setShowStageModal] = useState(false);
+  const [newStageName, setNewStageName] = useState('');
+  const [newStageColor, setNewStageColor] = useState('#3b82f6');
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
   const { data: pipelinesData, isLoading: pipelinesLoading } = useQuery({
     queryKey: ['pipelines'],
     queryFn: () => api.get<PipelinesResponse>('/pipelines'),
@@ -207,7 +218,49 @@ export default function CRMPage() {
     },
   });
 
+  const createPipeline = useMutation({
+    mutationFn: (name: string) => api.post<{ pipeline: Pipeline }>('/pipelines', { name }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] });
+      setSelectedPipelineId(data.pipeline.id);
+      setShowPipelineModal(false);
+      setNewPipelineName('');
+      toast.success('Pipeline criado com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao criar pipeline');
+    },
+  });
+
+  const createStage = useMutation({
+    mutationFn: ({
+      pipelineId,
+      name,
+      color,
+    }: { pipelineId: string; name: string; color: string }) =>
+      api.post(`/pipelines/${pipelineId}/stages`, { name, color }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] });
+      setShowStageModal(false);
+      setNewStageName('');
+      setNewStageColor('#3b82f6');
+      toast.success('Etapa adicionada com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao adicionar etapa');
+    },
+  });
+
   const deals = dealsData?.deals || [];
+
+  // Filter deals by search query
+  const filteredDeals = searchQuery
+    ? deals.filter(
+        (deal) =>
+          deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          deal.contact?.name?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : deals;
   const isLoading = pipelinesLoading || dealsLoading;
 
   const handleMoveDeal = (dealId: string, stageId: string) => {
@@ -251,6 +304,27 @@ export default function CRMPage() {
     setSelectedDeal(null);
   }, []);
 
+  const handleCreatePipeline = useCallback(() => {
+    if (!newPipelineName.trim()) {
+      toast.error('Digite um nome para o pipeline');
+      return;
+    }
+    createPipeline.mutate(newPipelineName.trim());
+  }, [newPipelineName, createPipeline]);
+
+  const handleCreateStage = useCallback(() => {
+    if (!newStageName.trim()) {
+      toast.error('Digite um nome para a etapa');
+      return;
+    }
+    if (!currentPipeline?.id) return;
+    createStage.mutate({
+      pipelineId: currentPipeline.id,
+      name: newStageName.trim(),
+      color: newStageColor,
+    });
+  }, [newStageName, newStageColor, currentPipeline?.id, createStage]);
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -269,11 +343,81 @@ export default function CRMPage() {
         <p className="mt-2 text-gray-400">Crie seu primeiro pipeline de vendas</p>
         <button
           type="button"
+          onClick={() => setShowPipelineModal(true)}
           className="mt-4 rounded-lg bg-v4-red-500 px-4 py-2 font-medium text-white transition hover:bg-v4-red-600"
         >
           <Plus className="mr-2 inline h-4 w-4" />
           Criar Pipeline
         </button>
+
+        {/* Pipeline Modal */}
+        {showPipelineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Novo Pipeline</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPipelineModal(false);
+                    setNewPipelineName('');
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="pipeline-name"
+                    className="block text-sm font-medium text-gray-300 mb-2"
+                  >
+                    Nome do Pipeline
+                  </label>
+                  <input
+                    id="pipeline-name"
+                    type="text"
+                    value={newPipelineName}
+                    onChange={(e) => setNewPipelineName(e.target.value)}
+                    placeholder="Ex: Vendas B2B"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreatePipeline();
+                    }}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPipelineModal(false);
+                      setNewPipelineName('');
+                    }}
+                    className="rounded-lg px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreatePipeline}
+                    disabled={createPipeline.isPending}
+                    className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 font-medium text-white hover:bg-v4-red-600 disabled:opacity-50"
+                  >
+                    {createPipeline.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      'Criar Pipeline'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -287,8 +431,19 @@ export default function CRMPage() {
           <p className="text-gray-400">Gerencie seus negócios</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Buscar deals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-64 rounded-lg border border-gray-700 bg-gray-800 py-2 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
+            />
+          </div>
           {/* Pipeline Tabs */}
-          <div className="flex rounded-lg border border-gray-800 bg-gray-900 p-1">
+          <div className="flex items-center rounded-lg border border-gray-800 bg-gray-900 p-1">
             {pipelines.map((pipeline) => (
               <button
                 key={pipeline.id}
@@ -303,6 +458,14 @@ export default function CRMPage() {
                 {pipeline.name}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowPipelineModal(true)}
+              className="ml-1 rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white"
+              title="Criar novo pipeline"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
           <button
             type="button"
@@ -324,7 +487,7 @@ export default function CRMPage() {
               <StageColumn
                 key={stage.id}
                 stage={stage}
-                deals={deals}
+                deals={filteredDeals}
                 onMoveDeal={handleMoveDeal}
                 onOpenDrawer={handleOpenDealDrawer}
                 onAddDeal={handleNewDealFromStage}
@@ -336,12 +499,24 @@ export default function CRMPage() {
                 <p className="text-gray-400">Nenhuma etapa no pipeline</p>
                 <button
                   type="button"
+                  onClick={() => setShowStageModal(true)}
                   className="mt-2 text-sm text-v4-red-500 hover:text-v4-red-400"
                 >
                   Adicionar etapas
                 </button>
               </div>
             </div>
+          )}
+          {/* Add Stage Button */}
+          {currentPipeline?.stages && currentPipeline.stages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowStageModal(true)}
+              className="flex h-full min-w-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-800 text-gray-500 transition hover:border-gray-700 hover:text-gray-400"
+            >
+              <Plus className="h-8 w-8" />
+              <span className="mt-2 text-sm">Nova Etapa</span>
+            </button>
           )}
         </div>
       </div>
@@ -364,6 +539,182 @@ export default function CRMPage() {
           onClose={handleCloseDealDrawer}
           onEdit={handleEditDeal}
         />
+      )}
+
+      {/* Pipeline Modal */}
+      {showPipelineModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Novo Pipeline</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPipelineModal(false);
+                  setNewPipelineName('');
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="new-pipeline-name"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Nome do Pipeline
+                </label>
+                <input
+                  id="new-pipeline-name"
+                  type="text"
+                  value={newPipelineName}
+                  onChange={(e) => setNewPipelineName(e.target.value)}
+                  placeholder="Ex: Vendas B2B"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreatePipeline();
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPipelineModal(false);
+                    setNewPipelineName('');
+                  }}
+                  className="rounded-lg px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreatePipeline}
+                  disabled={createPipeline.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 font-medium text-white hover:bg-v4-red-600 disabled:opacity-50"
+                >
+                  {createPipeline.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    'Criar Pipeline'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stage Modal */}
+      {showStageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-900 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Nova Etapa</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStageModal(false);
+                  setNewStageName('');
+                  setNewStageColor('#3b82f6');
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="stage-name"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Nome da Etapa
+                </label>
+                <input
+                  id="stage-name"
+                  type="text"
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  placeholder="Ex: Qualificação"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateStage();
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="stage-color"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Cor
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="stage-color"
+                    type="color"
+                    value={newStageColor}
+                    onChange={(e) => setNewStageColor(e.target.value)}
+                    className="h-10 w-10 cursor-pointer rounded border border-gray-700 bg-gray-800"
+                  />
+                  <div className="flex gap-2">
+                    {[
+                      '#ef4444',
+                      '#f97316',
+                      '#eab308',
+                      '#22c55e',
+                      '#3b82f6',
+                      '#8b5cf6',
+                      '#ec4899',
+                    ].map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewStageColor(color)}
+                        className={`h-8 w-8 rounded-full border-2 ${newStageColor === color ? 'border-white' : 'border-transparent'}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStageModal(false);
+                    setNewStageName('');
+                    setNewStageColor('#3b82f6');
+                  }}
+                  className="rounded-lg px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateStage}
+                  disabled={createStage.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-v4-red-500 px-4 py-2 font-medium text-white hover:bg-v4-red-600 disabled:opacity-50"
+                >
+                  {createStage.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Adicionando...
+                    </>
+                  ) : (
+                    'Adicionar Etapa'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

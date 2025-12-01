@@ -92,7 +92,14 @@ export function TransferModal({ conversationId, onClose, onTransferred }: Transf
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Fechar modal"
+      />
 
       {/* Modal */}
       <div className="relative w-full max-w-md rounded-xl bg-gray-900 border border-gray-800 shadow-xl">
@@ -166,6 +173,7 @@ export function TransferModal({ conversationId, onClose, onTransferred }: Transf
               </div>
             ) : (
               <div className="space-y-1">
+                {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: UI rendering logic */}
                 {filteredAgents.map((agent) => (
                   <button
                     type="button"

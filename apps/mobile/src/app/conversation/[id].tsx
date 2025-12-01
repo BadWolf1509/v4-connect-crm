@@ -140,11 +140,7 @@ export default function ConversationScreen() {
         <View className={`rounded-2xl overflow-hidden ${isUser ? 'bg-v4-red-500' : 'bg-gray-800'}`}>
           {isImage && item.mediaUrl ? (
             <TouchableOpacity onPress={() => setPreviewImage(item.mediaUrl)}>
-              <Image
-                source={{ uri: item.mediaUrl }}
-                className="w-52 h-52"
-                resizeMode="cover"
-              />
+              <Image source={{ uri: item.mediaUrl }} className="w-52 h-52" resizeMode="cover" />
               {item.content && (
                 <View className="px-4 py-2">
                   <Text className="text-white">{item.content}</Text>
@@ -346,11 +342,7 @@ export default function ConversationScreen() {
             <X size={24} color="white" />
           </TouchableOpacity>
           {previewImage && (
-            <Image
-              source={{ uri: previewImage }}
-              className="w-full h-full"
-              resizeMode="contain"
-            />
+            <Image source={{ uri: previewImage }} className="w-full h-full" resizeMode="contain" />
           )}
         </View>
       </Modal>

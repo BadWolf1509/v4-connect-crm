@@ -6,8 +6,11 @@ import { cn } from '@/lib/utils';
 import { useSocketContext } from '@/providers/socket-provider';
 import { type ConversationStatus, type Message, useInboxStore } from '@/stores/inbox-store';
 import {
+  Archive,
+  Ban,
   Check,
   CheckCheck,
+  Download,
   Info,
   Loader2,
   MessageSquare,
@@ -17,6 +20,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  ShieldAlert,
   Smile,
   Video,
   Zap,
@@ -74,7 +78,9 @@ export default function InboxPage() {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showConversationMenu, setShowConversationMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     conversations,
@@ -101,13 +107,14 @@ export default function InboxPage() {
     getConversationMessages,
   } = useInboxStore();
 
+  // Socket context - must be before any useCallback that uses these
   const {
     socket: _socket,
     isConnected,
     joinConversation,
     leaveConversation,
     startTyping,
-    stopTyping: _stopTyping,
+    stopTyping,
   } = useSocketContext();
 
   const selectedConversation = getSelectedConversation();
@@ -233,6 +240,12 @@ export default function InboxPage() {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedConversationId || !isAuthenticated) return;
 
+    // Stop typing indicator when sending
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
     setSending(true);
     const content = messageInput;
     setMessageInput('');
@@ -271,6 +284,12 @@ export default function InboxPage() {
   // Handle conversation selection
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
+      // Stop typing in previous conversation
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+
       // Leave previous room
       if (selectedConversationId) {
         leaveConversation(selectedConversationId);
@@ -289,12 +308,22 @@ export default function InboxPage() {
     ],
   );
 
-  // Handle typing
   const handleTyping = useCallback(() => {
-    if (selectedConversationId) {
-      startTyping(selectedConversationId);
+    if (!selectedConversationId) return;
+
+    // Start typing indicator
+    startTyping(selectedConversationId);
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
-  }, [selectedConversationId, startTyping]);
+
+    // Set timeout to stop typing after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping(selectedConversationId);
+    }, 2000);
+  }, [selectedConversationId, startTyping, stopTyping]);
 
   // Handle quick reply selection
   const handleQuickReplySelect = useCallback((content: string) => {
@@ -302,15 +331,92 @@ export default function InboxPage() {
     setShowQuickReplies(false);
   }, []);
 
-  // Handle conversation status change
+  // Handle conversation status change (persisted to API)
   const handleStatusChange = useCallback(
-    (status: ConversationStatus) => {
-      if (selectedConversationId) {
-        updateConversation(selectedConversationId, { status });
+    async (status: ConversationStatus) => {
+      if (!selectedConversationId) return;
+
+      // Optimistic update
+      updateConversation(selectedConversationId, { status });
+
+      try {
+        await api.patch(`/conversations/${selectedConversationId}`, { status });
+        toast.success(
+          `Conversa ${status === 'resolved' ? 'resolvida' : status === 'pending' ? 'marcada como pendente' : 'aberta'}`,
+        );
+      } catch (error) {
+        // Rollback on error
+        const previousStatus = selectedConversation?.status || 'open';
+        updateConversation(selectedConversationId, {
+          status: previousStatus as ConversationStatus,
+        });
+        toast.error('Erro ao atualizar status da conversa');
+        console.error('Status update error:', error);
       }
     },
-    [selectedConversationId, updateConversation],
+    [selectedConversationId, updateConversation, api, selectedConversation?.status],
   );
+
+  // Handle archive conversation
+  const handleArchiveConversation = useCallback(async () => {
+    if (!selectedConversationId) return;
+    setShowConversationMenu(false);
+
+    try {
+      await api.patch(`/conversations/${selectedConversationId}`, { status: 'resolved' });
+      updateConversation(selectedConversationId, { status: 'resolved' });
+      toast.success('Conversa arquivada');
+    } catch (error) {
+      toast.error('Erro ao arquivar conversa');
+      console.error('Archive error:', error);
+    }
+  }, [selectedConversationId, api, updateConversation]);
+
+  // Handle block contact
+  const handleBlockContact = useCallback(async () => {
+    if (!selectedConversation?.contact?.id) return;
+    setShowConversationMenu(false);
+
+    try {
+      await api.patch(`/contacts/${selectedConversation.contact.id}`, { isBlocked: true });
+      toast.success('Contato bloqueado');
+    } catch (error) {
+      toast.error('Erro ao bloquear contato');
+      console.error('Block error:', error);
+    }
+  }, [selectedConversation?.contact?.id, api]);
+
+  // Handle export conversation
+  const handleExportConversation = useCallback(() => {
+    if (!conversationMessages.length) {
+      toast.error('Nenhuma mensagem para exportar');
+      return;
+    }
+    setShowConversationMenu(false);
+
+    // Create text content for export
+    const contactName = selectedConversation?.contact?.name || 'Desconhecido';
+    const exportContent = conversationMessages
+      .map((msg) => {
+        const sender = msg.sender === 'user' ? 'Você' : contactName;
+        const time = new Date(msg.timestamp).toLocaleString('pt-BR');
+        return `[${time}] ${sender}: ${msg.content}`;
+      })
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `conversa-${contactName}-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('Conversa exportada');
+  }, [conversationMessages, selectedConversation?.contact?.name]);
 
   // Handle message input change with quick reply detection
   const handleInputChange = useCallback((value: string) => {
@@ -588,12 +694,55 @@ export default function InboxPage() {
                 >
                   <Info className="h-5 w-5" />
                 </button>
-                <button
-                  type="button"
-                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowConversationMenu(!showConversationMenu)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+                  {showConversationMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg z-50">
+                      <button
+                        type="button"
+                        onClick={handleArchiveConversation}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                      >
+                        <Archive className="h-4 w-4" />
+                        Arquivar conversa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleStatusChange('pending');
+                          setShowConversationMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                      >
+                        <ShieldAlert className="h-4 w-4" />
+                        Marcar como spam
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBlockContact}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-gray-800"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Bloquear contato
+                      </button>
+                      <div className="border-t border-gray-800 my-1" />
+                      <button
+                        type="button"
+                        onClick={handleExportConversation}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar conversa
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

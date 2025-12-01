@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { FileText, Image, Loader2, Music, Video, X } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useCallback, useRef, useState } from 'react';
 
 interface UploadedFile {
@@ -66,6 +67,7 @@ function getFileIcon(type: 'image' | 'video' | 'audio' | 'document') {
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: File upload UI with multiple states
 export function MediaUpload({ conversationId, onFileUploaded, onClose }: MediaUploadProps) {
+  const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -159,7 +161,7 @@ export function MediaUpload({ conversationId, onFileUploaded, onClose }: MediaUp
           method: 'POST',
           body: formData,
           headers: {
-            'x-tenant-id': 'default', // TODO: Get from auth context
+            'x-tenant-id': session?.user?.tenantId || '',
           },
         },
       );

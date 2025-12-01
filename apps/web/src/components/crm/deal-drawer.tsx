@@ -17,7 +17,9 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface DealDrawerProps {
   deal: Deal;
@@ -36,10 +38,38 @@ interface Activity {
 
 export function DealDrawer({ deal, stages, onClose, onEdit }: DealDrawerProps) {
   const { api } = useApi();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [showMenu, setShowMenu] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
+
+  // Handler to open conversation with contact
+  const handleOpenConversation = async () => {
+    if (!deal.contact?.phone) {
+      toast.error('Contato não possui telefone cadastrado');
+      return;
+    }
+
+    try {
+      // Try to find existing conversation with this contact
+      const response = await api.get<{ conversations: Array<{ id: string }> }>('/conversations', {
+        params: { contactId: deal.contact.id, limit: 1 },
+      });
+
+      const firstConversation = response.conversations?.[0];
+      if (firstConversation) {
+        router.push(`/inbox?conversation=${firstConversation.id}`);
+      } else {
+        // No conversation found, redirect to inbox with contact info to start new conversation
+        toast.info('Nenhuma conversa encontrada. Inicie uma nova conversa na Inbox.');
+        router.push('/inbox');
+      }
+    } catch (err) {
+      console.error('Error finding conversation:', err);
+      toast.error('Erro ao buscar conversa');
+    }
+  };
 
   const deleteDeal = useMutation({
     mutationFn: () => api.delete(`/deals/${deal.id}`),
@@ -77,7 +107,7 @@ export function DealDrawer({ deal, stages, onClose, onEdit }: DealDrawerProps) {
   };
 
   // Fetch activities from API
-  const { data: activitiesData, isLoading: activitiesLoading } = useQuery({
+  const { data: activitiesData } = useQuery({
     queryKey: ['deal-activities', deal.id],
     queryFn: () => api.get<{ activities: Activity[] }>(`/deals/${deal.id}/activities`),
   });
@@ -263,6 +293,7 @@ export function DealDrawer({ deal, stages, onClose, onEdit }: DealDrawerProps) {
               )}
               <button
                 type="button"
+                onClick={handleOpenConversation}
                 className="flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
               >
                 <MessageSquare className="h-3 w-3" />

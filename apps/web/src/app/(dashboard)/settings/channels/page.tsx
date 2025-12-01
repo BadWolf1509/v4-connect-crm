@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Channel {
   id: string;
@@ -53,7 +54,12 @@ export default function ChannelsPage() {
     if (!isAuthenticated) return;
     try {
       // Sync with Evolution API first, then fetch channels
-      await api.post('/whatsapp/sync', {}).catch(() => {});
+      try {
+        await api.post('/whatsapp/sync', {});
+      } catch (syncError) {
+        console.error('WhatsApp sync error:', syncError);
+        toast.error('Erro ao sincronizar canais do WhatsApp');
+      }
       const data = await api.get<{ data: Channel[] }>('/channels');
       setChannels(data.data || []);
     } catch (err) {
