@@ -1,9 +1,12 @@
 'use client';
 
+import { ImportModal } from '@/components/contacts/import-modal';
+import { MergeModal } from '@/components/contacts/merge-modal';
 import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import {
   Download,
+  GitMerge,
   Loader2,
   Mail,
   MoreVertical,
@@ -17,7 +20,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Contact {
@@ -37,7 +40,6 @@ interface ContactsResponse {
   limit: number;
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Contacts page has complex filtering and state management
 export default function ContactsPage() {
   const { api, isAuthenticated } = useApi();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -58,8 +60,8 @@ export default function ContactsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [tagInput, setTagInput] = useState('');
-  const [importing, setImporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
 
   // Get unique tags from all contacts
   const allTags = Array.from(new Set(contacts.flatMap((c) => c.tags || [])));
@@ -166,82 +168,6 @@ export default function ContactsPage() {
     toast.success('Contatos exportados com sucesso');
   }, [contacts]);
 
-  // Import contacts from CSV
-  const handleImportContacts = useCallback(
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: CSV import parsing logic
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      setImporting(true);
-
-      try {
-        const text = await file.text();
-        const lines = text.split('\n').filter((line) => line.trim());
-
-        // Skip header row
-        const dataLines = lines.slice(1);
-
-        const contactsToImport: Array<{
-          name: string;
-          email?: string;
-          phone?: string;
-          tags?: string[];
-        }> = [];
-
-        for (const line of dataLines) {
-          // Parse CSV (simple parsing, handles quoted values)
-          const values =
-            line
-              .match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)
-              ?.map((v) => v.replace(/^"|"$/g, '').trim()) || [];
-
-          if (values[0]) {
-            contactsToImport.push({
-              name: values[0],
-              email: values[1] || undefined,
-              phone: values[2] || undefined,
-              tags: values[3]
-                ? values[3]
-                    .split(';')
-                    .map((t) => t.trim())
-                    .filter(Boolean)
-                : undefined,
-            });
-          }
-        }
-
-        if (contactsToImport.length === 0) {
-          toast.error('Nenhum contato válido encontrado no arquivo');
-          return;
-        }
-
-        // Import contacts in batches
-        let imported = 0;
-        for (const contact of contactsToImport) {
-          try {
-            await api.post('/contacts', contact);
-            imported++;
-          } catch (err) {
-            console.error('Error importing contact:', contact.name, err);
-          }
-        }
-
-        toast.success(`${imported} contato(s) importado(s) com sucesso`);
-        fetchContacts();
-      } catch (err) {
-        console.error('Import error:', err);
-        toast.error('Erro ao importar contatos');
-      } finally {
-        setImporting(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-    },
-    [api, fetchContacts],
-  );
-
   const handleSave = async () => {
     if (!formData.name.trim()) {
       setFormError('Nome e obrigatorio');
@@ -307,25 +233,22 @@ export default function ContactsPage() {
         </div>
         <div className="flex items-center gap-2">
           {/* Import */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleImportContacts}
-            className="hidden"
-          />
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="flex items-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50"
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
           >
-            {importing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
+            <Upload className="h-4 w-4" />
             Importar
+          </button>
+          {/* Merge Duplicates */}
+          <button
+            type="button"
+            onClick={() => setShowMergeModal(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+          >
+            <GitMerge className="h-4 w-4" />
+            Duplicados
           </button>
           {/* Export */}
           <button
@@ -450,7 +373,6 @@ export default function ContactsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Contact row rendering has conditional logic */}
               {contacts.map((contact) => (
                 <tr key={contact.id} className="hover:bg-gray-800/50">
                   <td className="whitespace-nowrap px-6 py-4">
@@ -748,6 +670,12 @@ export default function ContactsPage() {
           </div>
         </div>
       )}
+
+      {/* Import Modal */}
+      <ImportModal open={showImportModal} onClose={() => setShowImportModal(false)} />
+
+      {/* Merge Modal */}
+      <MergeModal open={showMergeModal} onClose={() => setShowMergeModal(false)} />
     </div>
   );
 }
