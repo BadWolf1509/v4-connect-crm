@@ -1,5 +1,6 @@
 'use client';
 
+import { ContactPanel, MediaUpload, QuickReplies, TransferModal } from '@/components/inbox';
 import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import { useSocketContext } from '@/providers/socket-provider';
@@ -18,9 +19,11 @@ import {
   Send,
   Smile,
   Video,
+  Zap,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 const channelColors: Record<string, string> = {
   whatsapp: 'bg-green-500',
@@ -28,6 +31,30 @@ const channelColors: Record<string, string> = {
   messenger: 'bg-blue-500',
   email: 'bg-gray-500',
 };
+
+// Common emojis for quick selection
+const commonEmojis = [
+  '😊',
+  '😂',
+  '🙂',
+  '😉',
+  '👍',
+  '👋',
+  '🎉',
+  '❤️',
+  '🙏',
+  '✅',
+  '👏',
+  '🔥',
+  '💯',
+  '✨',
+  '🤝',
+  '💪',
+  '🚀',
+  '⭐',
+  '💡',
+  '📌',
+];
 
 const channelLabels: Record<string, string> = {
   whatsapp: 'WhatsApp',
@@ -42,6 +69,11 @@ export default function InboxPage() {
   const { api, isAuthenticated } = useApi();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -56,6 +88,7 @@ export default function InboxPage() {
     typingUsers,
     setConversations,
     selectConversation,
+    updateConversation,
     setFilter,
     setSearchQuery,
     setConversationsLoading,
@@ -110,6 +143,7 @@ export default function InboxPage() {
           lastMessageAt: string;
           status: string;
           assigneeId?: string;
+          unreadCount?: number;
         }>;
       }>('/conversations', { params });
 
@@ -130,7 +164,7 @@ export default function InboxPage() {
           | 'email',
         lastMessage: '', // Will be populated when selecting
         lastMessageAt: conv.lastMessageAt,
-        unreadCount: 0, // TODO: Add unread count to API
+        unreadCount: conv.unreadCount || 0,
         status: conv.status as ConversationStatus,
         assignedTo: conv.assigneeId,
       }));
@@ -226,7 +260,9 @@ export default function InboxPage() {
       // Socket will handle the real message update
     } catch (error) {
       console.error('Error sending message:', error);
-      // TODO: Show error toast
+      toast.error('Erro ao enviar mensagem', {
+        description: error instanceof Error ? error.message : 'Tente novamente',
+      });
     } finally {
       setSending(false);
     }
@@ -259,6 +295,56 @@ export default function InboxPage() {
       startTyping(selectedConversationId);
     }
   }, [selectedConversationId, startTyping]);
+
+  // Handle quick reply selection
+  const handleQuickReplySelect = useCallback((content: string) => {
+    setMessageInput(content);
+    setShowQuickReplies(false);
+  }, []);
+
+  // Handle conversation status change
+  const handleStatusChange = useCallback(
+    (status: ConversationStatus) => {
+      if (selectedConversationId) {
+        updateConversation(selectedConversationId, { status });
+      }
+    },
+    [selectedConversationId, updateConversation],
+  );
+
+  // Handle message input change with quick reply detection
+  const handleInputChange = useCallback((value: string) => {
+    setMessageInput(value);
+    // Show quick replies when typing starts with /
+    if (value.startsWith('/')) {
+      setShowQuickReplies(true);
+    } else {
+      setShowQuickReplies(false);
+    }
+  }, []);
+
+  // Handle file upload completion
+  const handleFileUploaded = useCallback(
+    (file: { url: string; type: string; filename: string }) => {
+      if (!selectedConversationId) return;
+
+      // Add message with the uploaded file
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`,
+        conversationId: selectedConversationId,
+        content: file.filename,
+        type: file.type as 'image' | 'audio' | 'video' | 'file',
+        sender: 'user',
+        senderName: session?.user?.name || undefined,
+        timestamp: new Date().toISOString(),
+        status: 'sent',
+        mediaUrl: file.url,
+      };
+      addMessage(selectedConversationId, tempMessage);
+      setShowMediaUpload(false);
+    },
+    [selectedConversationId, session, addMessage],
+  );
 
   // Load conversations on mount and filter change
   useEffect(() => {
@@ -433,201 +519,310 @@ export default function InboxPage() {
 
       {/* Chat Area */}
       {selectedConversation ? (
-        <div className="flex flex-1 flex-col">
-          {/* Chat Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
-                  {selectedConversation.contact.avatarUrl ? (
-                    <img
-                      src={selectedConversation.contact.avatarUrl}
-                      alt={selectedConversation.contact.name}
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-medium text-white">
-                      {selectedConversation.contact.name[0]?.toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div
-                  className={cn(
-                    'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-gray-900',
-                    channelColors[selectedConversation.channel],
-                  )}
-                />
-              </div>
-              <div>
-                <h2 className="font-medium text-white">{selectedConversation.contact.name}</h2>
-                <p className="text-sm text-gray-400">
-                  {selectedConversation.contact.phone || selectedConversation.contact.email}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <Phone className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <Video className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <Info className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <MoreVertical className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messagesLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-              </div>
-            ) : conversationMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <MessageSquare className="h-12 w-12 mb-2" />
-                <p>Nenhuma mensagem ainda</p>
-                <p className="text-sm">Inicie a conversa enviando uma mensagem</p>
-              </div>
-            ) : (
-              <>
-                {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Message rendering with conditional styles */}
-                {conversationMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex',
-                      message.sender === 'user' ? 'justify-end' : 'justify-start',
+        <>
+          <div className="flex flex-1 flex-col">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
+                    {selectedConversation.contact.avatarUrl ? (
+                      <img
+                        src={selectedConversation.contact.avatarUrl}
+                        alt={selectedConversation.contact.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-medium text-white">
+                        {selectedConversation.contact.name[0]?.toUpperCase()}
+                      </span>
                     )}
-                  >
+                  </div>
+                  <div
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-gray-900',
+                      channelColors[selectedConversation.channel],
+                    )}
+                  />
+                </div>
+                <div>
+                  <h2 className="font-medium text-white">{selectedConversation.contact.name}</h2>
+                  <p className="text-sm text-gray-400">
+                    {selectedConversation.contact.phone || selectedConversation.contact.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    toast.info('Chamada de voz', {
+                      description: 'Funcionalidade em desenvolvimento',
+                    })
+                  }
+                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  title="Chamada de voz"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    toast.info('Videochamada', { description: 'Funcionalidade em desenvolvimento' })
+                  }
+                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  title="Videochamada"
+                >
+                  <Video className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowContactPanel(!showContactPanel)}
+                  className={cn(
+                    'rounded-lg p-2 transition',
+                    showContactPanel
+                      ? 'bg-v4-red-500 text-white'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                  )}
+                >
+                  <Info className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messagesLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                </div>
+              ) : conversationMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <MessageSquare className="h-12 w-12 mb-2" />
+                  <p>Nenhuma mensagem ainda</p>
+                  <p className="text-sm">Inicie a conversa enviando uma mensagem</p>
+                </div>
+              ) : (
+                <>
+                  {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Message rendering with conditional styles */}
+                  {conversationMessages.map((message) => (
                     <div
+                      key={message.id}
                       className={cn(
-                        'max-w-[70%] rounded-2xl px-4 py-2',
-                        message.sender === 'user'
-                          ? 'bg-v4-red-500 text-white'
-                          : 'bg-gray-800 text-white',
+                        'flex',
+                        message.sender === 'user' ? 'justify-end' : 'justify-start',
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       <div
                         className={cn(
-                          'mt-1 flex items-center justify-end gap-1 text-xs',
-                          message.sender === 'user' ? 'text-white/70' : 'text-gray-500',
+                          'max-w-[70%] rounded-2xl px-4 py-2',
+                          message.sender === 'user'
+                            ? 'bg-v4-red-500 text-white'
+                            : 'bg-gray-800 text-white',
                         )}
                       >
-                        <span>{formatTime(message.timestamp)}</span>
-                        {message.sender === 'user' && (
-                          <>
-                            {message.status === 'sending' && (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            )}
-                            {message.status === 'sent' && <Check className="h-3 w-3" />}
-                            {message.status === 'delivered' && <CheckCheck className="h-3 w-3" />}
-                            {message.status === 'read' && (
-                              <CheckCheck className="h-3 w-3 text-blue-400" />
-                            )}
-                          </>
-                        )}
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <div
+                          className={cn(
+                            'mt-1 flex items-center justify-end gap-1 text-xs',
+                            message.sender === 'user' ? 'text-white/70' : 'text-gray-500',
+                          )}
+                        >
+                          <span>{formatTime(message.timestamp)}</span>
+                          {message.sender === 'user' && (
+                            <>
+                              {message.status === 'sending' && (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              )}
+                              {message.status === 'sent' && <Check className="h-3 w-3" />}
+                              {message.status === 'delivered' && <CheckCheck className="h-3 w-3" />}
+                              {message.status === 'read' && (
+                                <CheckCheck className="h-3 w-3 text-blue-400" />
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
 
-            {/* Typing indicator */}
-            {currentTypingUsers.length > 0 && (
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <div className="flex space-x-1">
-                  <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" />
-                  <div
-                    className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
-                    style={{ animationDelay: '0.1s' }}
+              {/* Typing indicator */}
+              {currentTypingUsers.length > 0 && (
+                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                  <div className="flex space-x-1">
+                    <div className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" />
+                    <div
+                      className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
+                      style={{ animationDelay: '0.1s' }}
+                    />
+                    <div
+                      className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
+                      style={{ animationDelay: '0.2s' }}
+                    />
+                  </div>
+                  <span>
+                    {currentTypingUsers.map((t) => t.userName).join(', ')} está digitando...
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Message Input */}
+            <div className="border-t border-gray-800 bg-gray-900 p-4">
+              <div className="relative flex items-end gap-3">
+                {/* Quick Replies Popup */}
+                {showQuickReplies && (
+                  <QuickReplies
+                    onSelect={handleQuickReplySelect}
+                    onClose={() => setShowQuickReplies(false)}
+                    searchTerm={messageInput.slice(1)}
                   />
-                  <div
-                    className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
-                    style={{ animationDelay: '0.2s' }}
+                )}
+
+                {/* Media Upload Popup */}
+                {showMediaUpload && selectedConversationId && (
+                  <MediaUpload
+                    conversationId={selectedConversationId}
+                    onFileUploaded={handleFileUploaded}
+                    onClose={() => setShowMediaUpload(false)}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowMediaUpload(!showMediaUpload)}
+                  className={cn(
+                    'rounded-lg p-2 transition',
+                    showMediaUpload
+                      ? 'bg-v4-red-500 text-white'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                  )}
+                  title="Anexar arquivo"
+                >
+                  <Paperclip className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickReplies(!showQuickReplies)}
+                  className={cn(
+                    'rounded-lg p-2 transition',
+                    showQuickReplies
+                      ? 'bg-v4-red-500 text-white'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                  )}
+                  title="Respostas rápidas (digite /)"
+                >
+                  <Zap className="h-5 w-5" />
+                </button>
+                <div className="flex-1">
+                  <textarea
+                    value={messageInput}
+                    onChange={(e) => {
+                      handleInputChange(e.target.value);
+                      handleTyping();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                      if (e.key === 'Escape') {
+                        setShowQuickReplies(false);
+                      }
+                    }}
+                    placeholder="Digite sua mensagem... (/ para respostas rápidas)"
+                    rows={1}
+                    className="w-full resize-none rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
                   />
                 </div>
-                <span>
-                  {currentTypingUsers.map((t) => t.userName).join(', ')} está digitando...
-                </span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={cn(
+                      'rounded-lg p-2 transition',
+                      showEmojiPicker
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                    )}
+                    title="Emojis"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full right-0 mb-2 p-2 rounded-lg bg-gray-900 border border-gray-800 shadow-xl">
+                      <div className="grid grid-cols-10 gap-1">
+                        {commonEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setMessageInput((prev) => prev + emoji);
+                              setShowEmojiPicker(false);
+                            }}
+                            className="p-1 text-lg hover:bg-gray-800 rounded transition"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendMessage}
+                  disabled={!messageInput.trim() || sending}
+                  className="rounded-lg bg-v4-red-500 p-3 text-white hover:bg-v4-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </button>
               </div>
-            )}
-          </div>
-
-          {/* Message Input */}
-          <div className="border-t border-gray-800 bg-gray-900 p-4">
-            <div className="flex items-end gap-3">
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <Paperclip className="h-5 w-5" />
-              </button>
-              <div className="flex-1">
-                <textarea
-                  value={messageInput}
-                  onChange={(e) => {
-                    setMessageInput(e.target.value);
-                    handleTyping();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder="Digite sua mensagem..."
-                  rows={1}
-                  className="w-full resize-none rounded-xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
-                />
-              </div>
-              <button
-                type="button"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              >
-                <Smile className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSendMessage}
-                disabled={!messageInput.trim() || sending}
-                className="rounded-lg bg-v4-red-500 p-3 text-white hover:bg-v4-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </button>
             </div>
           </div>
-        </div>
+
+          {/* Contact Panel */}
+          {showContactPanel && (
+            <ContactPanel
+              conversation={selectedConversation}
+              onClose={() => setShowContactPanel(false)}
+              onStatusChange={handleStatusChange}
+              onTransfer={() => setShowTransferModal(true)}
+            />
+          )}
+        </>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center bg-gray-950">
           <MessageSquare className="h-16 w-16 text-gray-700 mb-4" />
           <h2 className="text-xl font-medium text-white mb-2">Selecione uma conversa</h2>
           <p className="text-gray-500">Escolha uma conversa da lista para começar a atender</p>
         </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && selectedConversationId && (
+        <TransferModal
+          conversationId={selectedConversationId}
+          onClose={() => setShowTransferModal(false)}
+          onTransferred={() => {
+            fetchConversations();
+            setShowTransferModal(false);
+          }}
+        />
       )}
     </div>
   );

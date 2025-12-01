@@ -13,3 +13,4 @@ export * from './pipelines';
 export * from './deals';
 export * from './campaigns';
 export * from './chatbots';
+export * from './quick-replies';

@@ -1,3 +1,4 @@
+import { and, db, eq, schema } from '@v4-connect/database';
 import { type Job, Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
@@ -5,19 +6,105 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
   maxRetriesPerRequest: null,
 });
 
+const eventRedis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
+const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
+const META_GRAPH_API_URL = 'https://graph.facebook.com/v18.0';
+
+interface EvolutionMessageSent {
+  key?: {
+    id?: string;
+  };
+}
+
+interface MetaSendResult {
+  recipient_id?: string;
+  message_id?: string;
+}
+
+async function evolutionRequest<T>(
+  endpoint: string,
+  body: unknown,
+): Promise<{
+  success: boolean;
+  data?: T;
+  error?: string;
+}> {
+  try {
+    const response = await fetch(`${EVOLUTION_API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return { success: false, error: text || `HTTP ${response.status}` };
+    }
+
+    const data = (await response.json()) as T;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+async function metaRequest<T>(
+  endpoint: string,
+  accessToken: string,
+  body: unknown,
+): Promise<{
+  success: boolean;
+  data?: T;
+  error?: string;
+}> {
+  try {
+    const response = await fetch(`${META_GRAPH_API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await response.json()) as { error?: { message: string } } & T;
+
+    if ('error' in data && data.error) {
+      return { success: false, error: data.error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+type ChannelType = 'whatsapp_official' | 'whatsapp_unofficial' | 'instagram' | 'messenger';
+
 interface SendMessageJob {
+  tenantId: string;
   conversationId: string;
   channelId: string;
-  channelType: 'whatsapp_official' | 'whatsapp_unofficial' | 'instagram' | 'messenger';
+  channelType: ChannelType;
+  messageId: string;
   message: {
-    type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template';
+    type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'template';
     content?: string;
     mediaUrl?: string;
+    mediaMimeType?: string;
     templateId?: string;
     templateParams?: Record<string, string>;
   };
   recipientPhone?: string;
-  recipientId?: string;
+  recipientExternalId?: string;
+  senderId?: string;
 }
 
 interface ProcessIncomingJob {
@@ -59,35 +146,246 @@ export const messageWorker = new Worker<SendMessageJob | ProcessIncomingJob>(
   },
 );
 
+async function publishSocketEvent(event: {
+  type: 'message:update';
+  tenantId: string;
+  conversationId: string;
+  data: unknown;
+}) {
+  try {
+    await eventRedis.publish('socket:events', JSON.stringify(event));
+  } catch (error) {
+    console.error('[Worker] Failed to publish socket event', error);
+  }
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Provider-specific send paths require branching
 async function sendMessage(data: SendMessageJob) {
-  const { channelType, message, recipientPhone: _recipientPhone, recipientId: _recipientId } = data;
+  const { channels, conversations, contacts, messages } = schema;
 
-  console.log(`Sending ${message.type} message via ${channelType}`);
+  const [channel, conversation] = await Promise.all([
+    db.query.channels.findFirst({
+      where: and(eq(channels.id, data.channelId), eq(channels.tenantId, data.tenantId)),
+    }),
+    db.query.conversations.findFirst({
+      where: and(
+        eq(conversations.id, data.conversationId),
+        eq(conversations.tenantId, data.tenantId),
+      ),
+    }),
+  ]);
 
-  switch (channelType) {
-    case 'whatsapp_official':
-      // TODO: Send via 360dialog/Meta Cloud API
-      // const response = await send360DialogMessage(data);
-      break;
-
-    case 'whatsapp_unofficial':
-      // TODO: Send via Evolution API
-      // const response = await sendEvolutionMessage(data);
-      break;
-
-    case 'instagram':
-      // TODO: Send via Instagram Graph API
-      break;
-
-    case 'messenger':
-      // TODO: Send via Messenger Platform
-      break;
+  if (!channel || !conversation) {
+    console.error('[Worker] Channel or conversation not found for job', data);
+    return { success: false };
   }
 
-  // TODO: Update message status in database
-  // TODO: Emit socket event for real-time update
+  const contact =
+    (await db.query.contacts.findFirst({
+      where: and(eq(contacts.id, conversation.contactId), eq(contacts.tenantId, data.tenantId)),
+    })) || null;
 
-  return { success: true };
+  const phone = data.recipientPhone || contact?.phone;
+  const recipientExternalId = data.recipientExternalId || contact?.externalId;
+
+  let status: 'sent' | 'failed' = 'sent';
+  let externalId: string | undefined;
+  let errorMessage: string | undefined;
+
+  try {
+    switch (data.channelType) {
+      case 'whatsapp_unofficial': {
+        const config = channel.config as { instanceName?: string };
+        if (!config?.instanceName || !phone) {
+          status = 'failed';
+          errorMessage = 'Missing Evolution instanceName or phone';
+          break;
+        }
+
+        let result: { success: boolean; data?: EvolutionMessageSent; error?: string } | undefined;
+        if (data.message.type === 'text' && data.message.content) {
+          result = await evolutionRequest<EvolutionMessageSent>(
+            `/message/sendText/${config.instanceName}`,
+            {
+              number: phone,
+              text: data.message.content,
+            },
+          );
+        } else if (data.message.type === 'image' && data.message.mediaUrl) {
+          result = await evolutionRequest<EvolutionMessageSent>(
+            `/message/sendMedia/${config.instanceName}`,
+            {
+              number: phone,
+              mediatype: 'image',
+              mimetype: 'image/jpeg',
+              media: data.message.mediaUrl,
+              caption: data.message.content,
+            },
+          );
+        } else if (data.message.type === 'audio' && data.message.mediaUrl) {
+          result = await evolutionRequest<EvolutionMessageSent>(
+            `/message/sendMedia/${config.instanceName}`,
+            {
+              number: phone,
+              mediatype: 'audio',
+              mimetype: 'audio/ogg',
+              media: data.message.mediaUrl,
+            },
+          );
+        } else if (data.message.type === 'document' && data.message.mediaUrl) {
+          result = await evolutionRequest<EvolutionMessageSent>(
+            `/message/sendMedia/${config.instanceName}`,
+            {
+              number: phone,
+              mediatype: 'document',
+              mimetype: data.message.mediaMimeType || 'application/octet-stream',
+              media: data.message.mediaUrl,
+              fileName: data.message.content || 'document',
+            },
+          );
+        } else if (data.message.type === 'video' && data.message.mediaUrl) {
+          result = await evolutionRequest<EvolutionMessageSent>(
+            `/message/sendMedia/${config.instanceName}`,
+            {
+              number: phone,
+              mediatype: 'video',
+              mimetype: data.message.mediaMimeType || 'video/mp4',
+              media: data.message.mediaUrl,
+              caption: data.message.content,
+            },
+          );
+        }
+
+        if (!result?.success) {
+          status = 'failed';
+          errorMessage = result?.error || 'Evolution send failed';
+        } else {
+          externalId = result.data?.key?.id;
+        }
+        break;
+      }
+
+      case 'instagram':
+      case 'messenger': {
+        const config = channel.config as { pageAccessToken?: string; igUserId?: string };
+        const accessToken = config?.pageAccessToken;
+
+        if (!accessToken || !recipientExternalId) {
+          status = 'failed';
+          errorMessage = 'Missing pageAccessToken or recipientId';
+          break;
+        }
+
+        let result: { success: boolean; data?: MetaSendResult; error?: string } | undefined;
+
+        if (data.channelType === 'instagram') {
+          if (!config?.igUserId) {
+            status = 'failed';
+            errorMessage = 'Missing igUserId';
+            break;
+          }
+
+          if (data.message.type === 'text' && data.message.content) {
+            result = await metaRequest<MetaSendResult>(
+              `/${config.igUserId}/messages`,
+              accessToken,
+              {
+                recipient: { id: recipientExternalId },
+                message: { text: data.message.content },
+              },
+            );
+          } else if (data.message.mediaUrl) {
+            const mediaType =
+              data.message.type === 'video'
+                ? 'video'
+                : data.message.type === 'audio'
+                  ? 'audio'
+                  : 'image';
+            result = await metaRequest<MetaSendResult>(
+              `/${config.igUserId}/messages`,
+              accessToken,
+              {
+                recipient: { id: recipientExternalId },
+                message: {
+                  attachment: {
+                    type: mediaType,
+                    payload: { url: data.message.mediaUrl },
+                  },
+                },
+              },
+            );
+          }
+        } else {
+          if (data.message.type === 'text' && data.message.content) {
+            result = await metaRequest<MetaSendResult>('/me/messages', accessToken, {
+              recipient: { id: recipientExternalId },
+              message: { text: data.message.content },
+              messaging_type: 'RESPONSE',
+            });
+          } else if (data.message.mediaUrl) {
+            const mediaType =
+              data.message.type === 'audio'
+                ? 'audio'
+                : data.message.type === 'video'
+                  ? 'video'
+                  : data.message.type === 'document'
+                    ? 'file'
+                    : 'image';
+            result = await metaRequest<MetaSendResult>('/me/messages', accessToken, {
+              recipient: { id: recipientExternalId },
+              message: {
+                attachment: {
+                  type: mediaType,
+                  payload: { url: data.message.mediaUrl, is_reusable: true },
+                },
+              },
+              messaging_type: 'RESPONSE',
+            });
+          }
+        }
+
+        if (!result?.success) {
+          status = 'failed';
+          errorMessage = result?.error || 'Meta send failed';
+        } else {
+          externalId = result.data?.message_id;
+        }
+        break;
+      }
+
+      case 'whatsapp_official':
+        status = 'failed';
+        errorMessage = 'WhatsApp official provider not yet implemented';
+        break;
+    }
+  } catch (error) {
+    status = 'failed';
+    errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  }
+
+  await db
+    .update(messages)
+    .set({
+      status,
+      externalId,
+      errorMessage,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(messages.id, data.messageId), eq(messages.tenantId, data.tenantId)));
+
+  await publishSocketEvent({
+    type: 'message:update',
+    tenantId: data.tenantId,
+    conversationId: data.conversationId,
+    data: {
+      id: data.messageId,
+      status,
+      externalId,
+      errorMessage,
+    },
+  });
+
+  return { success: status === 'sent', status, externalId, errorMessage };
 }
 
 async function processIncoming(data: ProcessIncomingJob) {

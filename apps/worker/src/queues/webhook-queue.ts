@@ -8,6 +8,26 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
   maxRetriesPerRequest: null,
 });
 
+// Redis client for publishing socket events
+const eventRedis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
+// Publish event to WebSocket server via Redis
+async function publishSocketEvent(event: {
+  type: 'message:new' | 'message:update' | 'conversation:update';
+  tenantId: string;
+  conversationId: string;
+  data: unknown;
+}) {
+  try {
+    await eventRedis.publish('socket:events', JSON.stringify(event));
+    console.log(`[Webhook] Published ${event.type} event for conversation ${event.conversationId}`);
+  } catch (error) {
+    console.error('[Webhook] Failed to publish socket event', error);
+  }
+}
+
 interface WebhookJob {
   type: 'whatsapp_official' | 'whatsapp_unofficial' | 'instagram' | 'messenger';
   payload: unknown;
@@ -389,8 +409,9 @@ async function processIncomingMessage(data: {
     }
 
     // Create message with proper schema fields
+    const messageId = nanoid();
     await db.insert(messages).values({
-      id: nanoid(),
+      id: messageId,
       tenantId: data.tenantId,
       conversationId: conversation.id,
       type: data.type,
@@ -412,9 +433,30 @@ async function processIncomingMessage(data: {
       })
       .where(eq(conversations.id, conversation.id));
 
-    console.log(`Saved message in conversation ${conversation.id}`);
+    console.log(`Saved message ${messageId} in conversation ${conversation.id}`);
 
-    // TODO: Emit socket event for real-time update
+    // Emit socket event for real-time update
+    await publishSocketEvent({
+      type: 'message:new',
+      tenantId: data.tenantId,
+      conversationId: conversation.id,
+      data: {
+        id: messageId,
+        conversationId: conversation.id,
+        type: data.type,
+        content: data.content || null,
+        mediaUrl: data.mediaUrl || null,
+        senderType: 'contact',
+        status: 'delivered',
+        createdAt: new Date(data.timestamp).toISOString(),
+        contact: {
+          id: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+        },
+      },
+    });
+
     // TODO: Check automation triggers
     // TODO: Send push notification
   } catch (error) {

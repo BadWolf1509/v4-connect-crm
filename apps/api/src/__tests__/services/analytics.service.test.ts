@@ -1,20 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock db and schema
-const mockDb = {
-  select: vi.fn().mockReturnThis(),
-  from: vi.fn().mockReturnThis(),
-  where: vi.fn().mockReturnThis(),
-  groupBy: vi.fn().mockReturnThis(),
-  orderBy: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockReturnThis(),
-  innerJoin: vi.fn().mockReturnThis(),
-  leftJoin: vi.fn().mockReturnThis(),
-};
+const { mockDb, mockSchema } = vi.hoisted(() => {
+  const db = {
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    groupBy: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+  };
 
-vi.mock('../../lib/db', () => ({
-  db: mockDb,
-  schema: {
+  const schema = {
     conversations: {
       tenantId: 'tenant_id',
       status: 'status',
@@ -41,7 +39,14 @@ vi.mock('../../lib/db', () => ({
       name: 'name',
       type: 'type',
     },
-  },
+  };
+
+  return { mockDb: db, mockSchema: schema };
+});
+
+vi.mock('../../lib/db', () => ({
+  db: mockDb,
+  schema: mockSchema,
 }));
 
 // Import after mocking

@@ -87,7 +87,8 @@ class StorageService {
     file: Buffer | Blob | File,
     contentType: string,
   ): Promise<UploadResult> {
-    const ext = contentType.split('/')[1] || 'jpg';
+    const rawExt = contentType.split('/')[1] || 'jpg';
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
     const path = `${userId}/avatar.${ext}`;
 
     return this.uploadFile(BUCKETS.avatars, path, file, {

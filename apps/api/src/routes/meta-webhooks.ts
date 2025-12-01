@@ -2,6 +2,7 @@ import { and, db, eq } from '@v4-connect/database';
 import { channels, contacts, conversations, messages } from '@v4-connect/database/schema';
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
+import { publishConversationUpdate, publishNewConversation, publishNewMessage } from '../lib/redis';
 import { metaService } from '../services/meta.service';
 
 const metaWebhooksRoutes = new Hono();
@@ -184,8 +185,11 @@ async function processIncomingMessage(
     }
 
     // Create message - use senderType and direction instead of sender
+    const messageId = nanoid();
+    const isNewConversation = !conversation.lastMessageAt;
+
     await db.insert(messages).values({
-      id: nanoid(),
+      id: messageId,
       tenantId: channel.tenantId,
       conversationId: conversation.id,
       type: messageType,
@@ -198,7 +202,7 @@ async function processIncomingMessage(
       metadata: { platform, timestamp: event.timestamp },
     });
 
-    // Update conversation - remove non-existent fields
+    // Update conversation
     await db
       .update(conversations)
       .set({
@@ -209,7 +213,40 @@ async function processIncomingMessage(
 
     console.log(`[Meta] Message saved: ${messageType} in conversation ${conversation.id}`);
 
-    // TODO: Emit real-time event via WebSocket
+    // Emit real-time events via WebSocket
+    const messageData = {
+      id: messageId,
+      conversationId: conversation.id,
+      type: messageType,
+      content,
+      mediaUrl,
+      senderType: 'contact',
+      status: 'delivered',
+      createdAt: new Date().toISOString(),
+      contact: {
+        id: contact.id,
+        name: contact.name,
+        avatarUrl: contact.avatarUrl,
+      },
+    };
+
+    await publishNewMessage(channel.tenantId, conversation.id, messageData);
+
+    // Get updated conversation data
+    const updatedConversation = await db.query.conversations.findFirst({
+      where: eq(conversations.id, conversation.id),
+      with: {
+        contact: true,
+        channel: true,
+      },
+    });
+
+    if (isNewConversation) {
+      await publishNewConversation(channel.tenantId, updatedConversation);
+    } else {
+      await publishConversationUpdate(channel.tenantId, updatedConversation);
+    }
+
     // TODO: Send push notification to assigned user
   } catch (error) {
     console.error('[Meta] Error processing message:', error);

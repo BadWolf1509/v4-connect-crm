@@ -1,7 +1,8 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
+import { messagesService } from './messages.service';
 
-const { conversations, contacts, channels, users, messages: _messages } = schema;
+const { conversations, contacts, channels, users } = schema;
 
 export interface ConversationFilters {
   tenantId: string;
@@ -106,8 +107,16 @@ export const conversationsService = {
 
     const total = Number(countResult[0]?.count || 0);
 
+    // Add unread count to each conversation
+    const conversationsWithUnread = await Promise.all(
+      data.map(async (conv) => ({
+        ...conv,
+        unreadCount: await messagesService.getUnreadCount(conv.id, tenantId),
+      })),
+    );
+
     return {
-      conversations: data,
+      conversations: conversationsWithUnread,
       pagination: {
         page,
         limit,

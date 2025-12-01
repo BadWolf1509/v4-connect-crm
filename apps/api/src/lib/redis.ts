@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
 
-const redisUrl = process.env.REDIS_URL;
+const redisUrl = process.env.NODE_ENV === 'test' ? null : process.env.REDIS_URL;
 
 let redis: Redis | null = null;
 

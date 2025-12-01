@@ -1,10 +1,11 @@
 'use client';
 
+import { DealDrawer, DealModal } from '@/components/crm';
 import { useApi } from '@/hooks/use-api';
 import type { Deal, Pipeline, Stage } from '@/lib/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, MoreHorizontal, Plus, User } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface PipelinesResponse {
   pipelines: Pipeline[];
@@ -23,9 +24,11 @@ interface DealsResponse {
 function DealCard({
   deal,
   onMove: _onMove,
+  onOpenDrawer,
 }: {
   deal: Deal;
   onMove: (dealId: string, stageId: string) => void;
+  onOpenDrawer: (deal: Deal) => void;
 }) {
   return (
     <div
@@ -40,6 +43,10 @@ function DealCard({
         <h4 className="font-medium text-white">{deal.title}</h4>
         <button
           type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDrawer(deal);
+          }}
           className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-white"
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -82,10 +89,14 @@ function StageColumn({
   stage,
   deals,
   onMoveDeal,
+  onOpenDrawer,
+  onAddDeal,
 }: {
   stage: Stage;
   deals: Deal[];
   onMoveDeal: (dealId: string, stageId: string) => void;
+  onOpenDrawer: (deal: Deal) => void;
+  onAddDeal: (stageId: string) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const stageDeals = deals.filter((d) => d.stage?.id === stage.id);
@@ -125,7 +136,9 @@ function StageColumn({
         </div>
         <button
           type="button"
+          onClick={() => onAddDeal(stage.id)}
           className="rounded p-1 text-gray-400 transition hover:bg-gray-800 hover:text-white"
+          title="Adicionar deal nesta etapa"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -144,7 +157,7 @@ function StageColumn({
       {/* Deals */}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {stageDeals.map((deal) => (
-          <DealCard key={deal.id} deal={deal} onMove={onMoveDeal} />
+          <DealCard key={deal.id} deal={deal} onMove={onMoveDeal} onOpenDrawer={onOpenDrawer} />
         ))}
         {stageDeals.length === 0 && (
           <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-800">
@@ -160,6 +173,12 @@ export default function CRMPage() {
   const { api } = useApi();
   const queryClient = useQueryClient();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
+
+  // Modal and Drawer states
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  const [isDealDrawerOpen, setIsDealDrawerOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [presetStageId, setPresetStageId] = useState<string | null>(null);
 
   const { data: pipelinesData, isLoading: pipelinesLoading } = useQuery({
     queryKey: ['pipelines'],
@@ -197,6 +216,40 @@ export default function CRMPage() {
       moveDeal.mutate({ dealId, stageId });
     }
   };
+
+  // Handlers for modal and drawer
+  const handleNewDeal = useCallback(() => {
+    setSelectedDeal(null);
+    setPresetStageId(null);
+    setIsDealModalOpen(true);
+  }, []);
+
+  const handleNewDealFromStage = useCallback((stageId: string) => {
+    setSelectedDeal(null);
+    setPresetStageId(stageId);
+    setIsDealModalOpen(true);
+  }, []);
+
+  const handleOpenDealDrawer = useCallback((deal: Deal) => {
+    setSelectedDeal(deal);
+    setIsDealDrawerOpen(true);
+  }, []);
+
+  const handleEditDeal = useCallback(() => {
+    setIsDealDrawerOpen(false);
+    setIsDealModalOpen(true);
+  }, []);
+
+  const handleCloseDealModal = useCallback(() => {
+    setIsDealModalOpen(false);
+    setSelectedDeal(null);
+    setPresetStageId(null);
+  }, []);
+
+  const handleCloseDealDrawer = useCallback(() => {
+    setIsDealDrawerOpen(false);
+    setSelectedDeal(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -253,6 +306,7 @@ export default function CRMPage() {
           </div>
           <button
             type="button"
+            onClick={handleNewDeal}
             className="rounded-lg bg-v4-red-500 px-4 py-2 font-medium text-white transition hover:bg-v4-red-600"
           >
             <Plus className="mr-2 inline h-4 w-4" />
@@ -267,7 +321,14 @@ export default function CRMPage() {
           {currentPipeline?.stages
             ?.sort((a, b) => a.order - b.order)
             .map((stage) => (
-              <StageColumn key={stage.id} stage={stage} deals={deals} onMoveDeal={handleMoveDeal} />
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                deals={deals}
+                onMoveDeal={handleMoveDeal}
+                onOpenDrawer={handleOpenDealDrawer}
+                onAddDeal={handleNewDealFromStage}
+              />
             ))}
           {(!currentPipeline?.stages || currentPipeline.stages.length === 0) && (
             <div className="flex h-full flex-1 items-center justify-center rounded-lg border border-dashed border-gray-800">
@@ -284,6 +345,26 @@ export default function CRMPage() {
           )}
         </div>
       </div>
+
+      {/* Deal Modal */}
+      <DealModal
+        isOpen={isDealModalOpen}
+        onClose={handleCloseDealModal}
+        pipelineId={currentPipeline?.id || ''}
+        stages={currentPipeline?.stages || []}
+        deal={selectedDeal}
+        defaultStageId={presetStageId}
+      />
+
+      {/* Deal Drawer */}
+      {selectedDeal && isDealDrawerOpen && (
+        <DealDrawer
+          deal={selectedDeal}
+          stages={currentPipeline?.stages || []}
+          onClose={handleCloseDealDrawer}
+          onEdit={handleEditDeal}
+        />
+      )}
     </div>
   );
 }

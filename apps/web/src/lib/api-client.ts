@@ -166,19 +166,24 @@ export interface Deal {
   value?: string;
   currency: string;
   status: 'open' | 'won' | 'lost';
-  contact: {
+  contact?: {
     id: string;
     name: string;
+    phone?: string;
+    email?: string;
   };
-  stage: {
+  stage?: {
     id: string;
     name: string;
-    color: string;
+    color?: string;
   };
   assignee?: {
     id: string;
     name: string;
   };
   expectedCloseDate?: string;
+  probability?: number;
+  notes?: string;
   createdAt: string;
+  updatedAt: string;
 }

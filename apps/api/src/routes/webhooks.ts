@@ -215,8 +215,14 @@ webhooksRoutes.post('/whatsapp/evolution', async (c) => {
           }
 
           // Update message status by whatsapp message ID
-          // await messagesService.updateByExternalId(messageId, { status: mappedStatus });
-          console.log(`Message ${messageId} status updated to ${mappedStatus}`);
+          try {
+            await messagesService.updateByExternalId(messageId, channel.tenantId, {
+              status: mappedStatus,
+            });
+            console.log(`Message ${messageId} status updated to ${mappedStatus}`);
+          } catch (error) {
+            console.error('Failed to update message status', error);
+          }
         }
         break;
       }

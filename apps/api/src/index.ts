@@ -2,11 +2,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
-// Load .env from apps/api directory (not monorepo root)
-// Use override: true to ensure our .env takes precedence over dotenv auto-inject
+// Load .env from monorepo root (single source of truth)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: resolve(__dirname, '../.env'), override: true });
+dotenv.config({ path: resolve(__dirname, '../../../.env') });
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -17,6 +16,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { errorHandler } from './middleware/error-handler';
 import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
+import { campaignsRoutes } from './routes/campaigns';
 import { channelsRoutes } from './routes/channels';
 import { contactsRoutes } from './routes/contacts';
 import { conversationsRoutes } from './routes/conversations';
@@ -25,6 +25,7 @@ import { inboxesRoutes } from './routes/inboxes';
 import { messagesRoutes } from './routes/messages';
 import { metaWebhooksRoutes } from './routes/meta-webhooks';
 import { pipelinesRoutes } from './routes/pipelines';
+import { quickRepliesRoutes } from './routes/quick-replies';
 import { teamsRoutes } from './routes/teams';
 import { uploadRoutes } from './routes/upload';
 import { webhooksRoutes } from './routes/webhooks';
@@ -73,10 +74,12 @@ api.route('/auth', authRoutes);
 api.route('/channels', channelsRoutes);
 api.route('/contacts', contactsRoutes);
 api.route('/conversations', conversationsRoutes);
+api.route('/campaigns', campaignsRoutes);
 api.route('/inboxes', inboxesRoutes);
 api.route('/messages', messagesRoutes);
 api.route('/pipelines', pipelinesRoutes);
 api.route('/deals', dealsRoutes);
+api.route('/quick-replies', quickRepliesRoutes);
 api.route('/teams', teamsRoutes);
 api.route('/upload', uploadRoutes);
 api.route('/webhooks', webhooksRoutes);

@@ -46,6 +46,51 @@ export interface CreateActivityData {
   dueAt?: Date;
 }
 
+interface StageDeal {
+  id: string;
+}
+
+interface ReorderInput {
+  dealId: string;
+  sourceStageId: string;
+  targetStageId: string;
+  targetOrder?: number;
+  sourceDeals: StageDeal[];
+  targetDeals: StageDeal[];
+}
+
+/**
+ * Calculate the new ordering for source and target stages when moving a deal.
+ * This keeps ordering contiguous (0..n-1) and clamps requested order inside bounds.
+ */
+export function buildReorderedStages({
+  dealId,
+  sourceStageId,
+  targetStageId,
+  targetOrder,
+  sourceDeals,
+  targetDeals,
+}: ReorderInput) {
+  const sourceWithoutDeal = sourceDeals.filter((deal) => deal.id !== dealId);
+  const baseTargetList =
+    targetStageId === sourceStageId ? [...sourceWithoutDeal] : [...targetDeals];
+
+  const insertAt =
+    targetOrder === undefined
+      ? baseTargetList.length
+      : Math.min(Math.max(0, Math.floor(targetOrder)), baseTargetList.length);
+
+  baseTargetList.splice(insertAt, 0, { id: dealId });
+
+  const target = baseTargetList.map((deal, index) => ({ id: deal.id, order: index }));
+  const source =
+    targetStageId === sourceStageId
+      ? target
+      : sourceWithoutDeal.map((deal, index) => ({ id: deal.id, order: index }));
+
+  return { source, target };
+}
+
 export const dealsService = {
   async findAll(filters: DealFilters) {
     const { tenantId, pipelineId, stageId, assigneeId, status, page = 1, limit = 50 } = filters;
@@ -241,20 +286,66 @@ export const dealsService = {
   },
 
   async moveToStage(id: string, tenantId: string, stageId: string, order?: number) {
-    // Get max order in target stage if order not specified
-    let newOrder = order;
-    if (newOrder === undefined) {
-      const maxOrderResult = await db
-        .select({ maxOrder: sql<number>`coalesce(max(${deals.order}), -1)` })
+    return db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({
+          stageId: deals.stageId,
+        })
         .from(deals)
-        .where(eq(deals.stageId, stageId));
+        .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
+        .limit(1);
 
-      newOrder = (maxOrderResult[0]?.maxOrder ?? -1) + 1;
-    }
+      if (!current) return null;
 
-    return this.update(id, tenantId, {
-      stageId,
-      order: newOrder,
+      const sourceDeals = await tx
+        .select({ id: deals.id })
+        .from(deals)
+        .where(and(eq(deals.stageId, current.stageId), eq(deals.tenantId, tenantId)))
+        .orderBy(asc(deals.order), asc(deals.createdAt));
+
+      const targetDeals =
+        current.stageId === stageId
+          ? sourceDeals
+          : await tx
+              .select({ id: deals.id })
+              .from(deals)
+              .where(and(eq(deals.stageId, stageId), eq(deals.tenantId, tenantId)))
+              .orderBy(asc(deals.order), asc(deals.createdAt));
+
+      const { source, target } = buildReorderedStages({
+        dealId: id,
+        sourceStageId: current.stageId,
+        targetStageId: stageId,
+        targetOrder: order,
+        sourceDeals,
+        targetDeals,
+      });
+
+      const now = new Date();
+      const applyOrders = async (
+        entries: Array<{ id: string; order: number }>,
+        updateStageId: boolean,
+      ) => {
+        for (const entry of entries) {
+          await tx
+            .update(deals)
+            .set({
+              order: entry.order,
+              updatedAt: now,
+              ...(updateStageId ? { stageId } : {}),
+            })
+            .where(and(eq(deals.id, entry.id), eq(deals.tenantId, tenantId)));
+        }
+      };
+
+      if (current.stageId === stageId) {
+        await applyOrders(target, false);
+      } else {
+        await applyOrders(source, false);
+        await applyOrders(target, true);
+      }
+
+      return this.findById(id, tenantId);
     });
   },
 
