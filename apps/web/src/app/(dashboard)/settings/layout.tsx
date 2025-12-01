@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Building2, CreditCard, MessageSquare, Users } from 'lucide-react';
+import { Building2, CreditCard, MessageSquare, Tag, Users } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 const settingsNav = [
   { name: 'Canais', href: '/settings/channels' as Route, icon: MessageSquare },
   { name: 'Equipe', href: '/settings/team' as Route, icon: Users },
+  { name: 'Tags', href: '/settings/tags' as Route, icon: Tag },
   { name: 'Empresa', href: '/settings/company' as Route, icon: Building2 },
   { name: 'Plano', href: '/settings/billing' as Route, icon: CreditCard },
 ];

@@ -2,6 +2,7 @@
 
 import { useInboxStore } from '@/stores/inbox-store';
 import type { Conversation, Message } from '@/stores/inbox-store';
+import { type NotificationItem, useNotificationsStore } from '@/stores/notifications-store';
 import { useSession } from 'next-auth/react';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { type Socket, io } from 'socket.io-client';
@@ -32,6 +33,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     addTypingUser,
     removeTypingUser,
   } = useInboxStore();
+  const { addNotification } = useNotificationsStore();
 
   useEffect(() => {
     if (!session?.user) return;
@@ -107,6 +109,19 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       removeTypingUser(data.conversationId, data.userId);
     });
 
+    // Notifications
+    newSocket.on('notification', (data: NotificationItem) => {
+      addNotification({
+        id: data.id || crypto.randomUUID(),
+        title: data.title || 'Notificação',
+        body: data.body,
+        createdAt: data.createdAt || new Date().toISOString(),
+        link: data.link,
+        read: false,
+        type: data.type,
+      });
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -120,6 +135,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     updateMessage,
     addTypingUser,
     removeTypingUser,
+    addNotification,
   ]);
 
   const joinConversation = useCallback(

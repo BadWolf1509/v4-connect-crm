@@ -35,6 +35,52 @@ function formatTime(date: string): string {
   return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+type MessageItemProps = {
+  message: Message;
+  onPreviewImage: (uri: string) => void;
+};
+
+function MessageItem({ message, onPreviewImage }: MessageItemProps) {
+  const isUser = message.sender === 'user';
+  const isImage = message.type === 'image' && message.mediaUrl;
+
+  const statusIcon =
+    message.status === 'read' ? (
+      <CheckCheck size={12} color="#fff" />
+    ) : message.status === 'delivered' ? (
+      <CheckCheck size={12} color="rgba(255,255,255,0.7)" />
+    ) : (
+      <Check size={12} color="rgba(255,255,255,0.7)" />
+    );
+
+  return (
+    <View className={`max-w-[80%] mb-2 ${isUser ? 'self-end' : 'self-start'}`}>
+      <View className={`rounded-2xl overflow-hidden ${isUser ? 'bg-v4-red-500' : 'bg-gray-800'}`}>
+        {isImage && message.mediaUrl ? (
+          <TouchableOpacity onPress={() => onPreviewImage(message.mediaUrl!)}>
+            <Image source={{ uri: message.mediaUrl }} className="w-52 h-52" resizeMode="cover" />
+            {message.content && (
+              <View className="px-4 py-2">
+                <Text className="text-white">{message.content}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View className="px-4 py-2">
+            <Text className="text-white">{message.content}</Text>
+          </View>
+        )}
+        <View className="flex-row items-center justify-end px-4 pb-2">
+          <Text className={`text-xs ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
+            {formatTime(message.createdAt)}
+          </Text>
+          {isUser && <View className="ml-1">{statusIcon}</View>}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [messageInput, setMessageInput] = useState('');
@@ -122,47 +168,6 @@ export default function ConversationScreen() {
     );
   }, [messageInput, id, sendMessage, refetch]);
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.sender === 'user';
-    const statusIcon =
-      item.status === 'read' ? (
-        <CheckCheck size={12} color="#fff" />
-      ) : item.status === 'delivered' ? (
-        <CheckCheck size={12} color="rgba(255,255,255,0.7)" />
-      ) : (
-        <Check size={12} color="rgba(255,255,255,0.7)" />
-      );
-
-    const isImage = item.type === 'image' && item.mediaUrl;
-
-    return (
-      <View className={`max-w-[80%] mb-2 ${isUser ? 'self-end' : 'self-start'}`}>
-        <View className={`rounded-2xl overflow-hidden ${isUser ? 'bg-v4-red-500' : 'bg-gray-800'}`}>
-          {isImage && item.mediaUrl ? (
-            <TouchableOpacity onPress={() => setPreviewImage(item.mediaUrl)}>
-              <Image source={{ uri: item.mediaUrl }} className="w-52 h-52" resizeMode="cover" />
-              {item.content && (
-                <View className="px-4 py-2">
-                  <Text className="text-white">{item.content}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <View className="px-4 py-2">
-              <Text className="text-white">{item.content}</Text>
-            </View>
-          )}
-          <View className="flex-row items-center justify-end px-4 pb-2">
-            <Text className={`text-xs ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
-              {formatTime(item.createdAt)}
-            </Text>
-            {isUser && <View className="ml-1">{statusIcon}</View>}
-          </View>
-        </View>
-      </View>
-    );
-  };
-
   const renderEmpty = () => (
     <View className="flex-1 items-center justify-center py-20">
       <Text className="text-gray-500">Nenhuma mensagem ainda</Text>
@@ -218,7 +223,9 @@ export default function ConversationScreen() {
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
+          renderItem={({ item }) => (
+            <MessageItem message={item} onPreviewImage={(uri) => setPreviewImage(uri)} />
+          )}
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={messages.length === 0 ? { flex: 1 } : { padding: 16 }}
           inverted={false}

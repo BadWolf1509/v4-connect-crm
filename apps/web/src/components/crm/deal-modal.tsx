@@ -26,7 +26,6 @@ interface ContactsResponse {
   };
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Deal form with multiple fields
 export function DealModal({
   isOpen,
   onClose,

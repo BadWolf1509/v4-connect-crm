@@ -173,7 +173,6 @@ export function TransferModal({ conversationId, onClose, onTransferred }: Transf
               </div>
             ) : (
               <div className="space-y-1">
-                {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: UI rendering logic */}
                 {filteredAgents.map((agent) => (
                   <button
                     type="button"

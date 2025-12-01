@@ -65,7 +65,6 @@ function getFileIcon(type: 'image' | 'video' | 'audio' | 'document') {
   }
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: File upload UI with multiple states
 export function MediaUpload({ conversationId, onFileUploaded, onClose }: MediaUploadProps) {
   const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);

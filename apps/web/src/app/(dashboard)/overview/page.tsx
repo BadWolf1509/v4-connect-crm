@@ -2,7 +2,7 @@
 
 import { useApi } from '@/hooks/use-api';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle, Clock, MessageSquare, Radio, TrendingUp, Users } from 'lucide-react';
+import { CheckCircle, Clock, MessageSquare, Radio, Timer, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
 
 interface AnalyticsOverview {
@@ -18,6 +18,20 @@ interface AnalyticsOverview {
 interface DailyConversation {
   date: string;
   count: number;
+}
+
+interface ResponseTimeMetrics {
+  averageResponseTime: number;
+  medianResponseTime: number;
+  fastestResponseTime: number;
+  slowestResponseTime: number;
+  totalResponses: number;
+}
+
+interface DailyResponseTime {
+  date: string;
+  averageResponseTime: number;
+  totalResponses: number;
 }
 
 interface RecentConversation {
@@ -101,6 +115,121 @@ function SimpleBarChart({ data }: { data: DailyConversation[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Format seconds to human readable time
+function formatResponseTime(seconds: number): string {
+  if (seconds === 0) return '-';
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+  }
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
+function ResponseTimeCard({ metrics }: { metrics: ResponseTimeMetrics | undefined }) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="rounded-lg bg-v4-red-500/10 p-2">
+          <Timer className="h-5 w-5 text-v4-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-white">Tempo de Resposta</h2>
+          <p className="text-xs text-gray-400">Últimos 30 dias</p>
+        </div>
+      </div>
+
+      {metrics && metrics.totalResponses > 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-white">
+              {formatResponseTime(metrics.averageResponseTime)}
+            </span>
+            <span className="text-sm text-gray-400">média</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-800">
+            <div>
+              <p className="text-sm text-gray-400">Mediana</p>
+              <p className="text-lg font-semibold text-white">
+                {formatResponseTime(metrics.medianResponseTime)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Total de respostas</p>
+              <p className="text-lg font-semibold text-white">
+                {metrics.totalResponses.toLocaleString('pt-BR')}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Mais rápida</p>
+              <p className="text-lg font-semibold text-green-400">
+                {formatResponseTime(metrics.fastestResponseTime)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Mais lenta</p>
+              <p className="text-lg font-semibold text-yellow-400">
+                {formatResponseTime(metrics.slowestResponseTime)}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Timer className="h-12 w-12 text-gray-600" />
+          <p className="mt-2 text-gray-400">Sem dados de resposta</p>
+          <p className="text-sm text-gray-500">As m�tricas aparecer�o quando houver conversas</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResponseTimeTrendChart({ data }: { data: DailyResponseTime[] }) {
+  const hasData = data.some((d) => d.averageResponseTime > 0);
+  const maxTime = Math.max(...data.map((d) => d.averageResponseTime), 1);
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
+      <h2 className="mb-4 text-lg font-semibold text-white">Tempo de Resposta (7 dias)</h2>
+      {hasData ? (
+        <div className="flex h-40 items-end justify-between gap-2">
+          {data.map((day) => {
+            const height = (day.averageResponseTime / maxTime) * 100;
+            const dateObj = new Date(day.date);
+            const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' });
+
+            return (
+              <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
+                <div className="relative w-full flex-1 group">
+                  <div
+                    className="absolute bottom-0 w-full rounded-t bg-blue-500 transition-all hover:bg-blue-400"
+                    style={{ height: `${Math.max(height, day.averageResponseTime > 0 ? 4 : 0)}%` }}
+                  />
+                  {day.averageResponseTime > 0 && (
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 px-2 py-1 rounded text-xs text-white whitespace-nowrap">
+                      {formatResponseTime(day.averageResponseTime)}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">{dayName}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex h-40 items-center justify-center text-gray-500">
+          Sem dados para exibir
+        </div>
+      )}
     </div>
   );
 }
@@ -197,6 +326,21 @@ export default function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  const { data: responseTimeData } = useQuery({
+    queryKey: ['analytics', 'response-time'],
+    queryFn: () => api.get<ResponseTimeMetrics>('/analytics/response-time'),
+    enabled: isAuthenticated,
+  });
+
+  const { data: dailyResponseTimeData } = useQuery({
+    queryKey: ['analytics', 'response-time-daily'],
+    queryFn: () =>
+      api.get<{ data: DailyResponseTime[] }>('/analytics/response-time/daily', {
+        params: { days: 7 },
+      }),
+    enabled: isAuthenticated,
+  });
+
   const isLoading = !isAuthenticated || overviewLoading || dailyLoading || recentLoading;
 
   if (isLoading) {
@@ -282,6 +426,17 @@ export default function DashboardPage() {
           </div>
           <RecentConversationsList conversations={recentData?.data || []} />
         </div>
+      </div>
+
+      {/* Response Time Section */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Response Time Card */}
+        <ResponseTimeCard metrics={responseTimeData} />
+
+        {/* Response Time Trend */}
+        {dailyResponseTimeData?.data && (
+          <ResponseTimeTrendChart data={dailyResponseTimeData.data} />
+        )}
       </div>
     </div>
   );

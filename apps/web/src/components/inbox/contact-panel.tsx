@@ -44,7 +44,6 @@ const channelLabels: Record<string, string> = {
   email: 'Email',
 };
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Contact panel with multiple interactive features
 export function ContactPanel({
   conversation,
   onClose,
