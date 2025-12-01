@@ -43,4 +43,28 @@ analyticsRoutes.get('/conversations/recent', async (c) => {
   return c.json({ data });
 });
 
+// Get response time metrics
+analyticsRoutes.get('/response-time', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const data = await analyticsService.getResponseTimeMetrics(auth.tenantId, days);
+  return c.json(data);
+});
+
+// Get response time by agent
+analyticsRoutes.get('/response-time/by-agent', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const data = await analyticsService.getResponseTimeByAgent(auth.tenantId, days);
+  return c.json({ data });
+});
+
+// Get daily response time trend
+analyticsRoutes.get('/response-time/daily', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '7');
+  const data = await analyticsService.getDailyResponseTime(auth.tenantId, days);
+  return c.json({ data });
+});
+
 export { analyticsRoutes };

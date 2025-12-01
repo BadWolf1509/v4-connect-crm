@@ -35,9 +35,7 @@ channelsRoutes.get('/', async (c) => {
     isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
   });
 
-  // Enrich WhatsApp channels with real-time status from Evolution API
   const enrichedChannels = await Promise.all(
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sync logic requires multiple conditions
     result.channels.map(async (channel) => {
       if (channel.type === 'whatsapp' && channel.provider === 'evolution') {
         const instanceName = (channel.config as { instanceName?: string })?.instanceName;

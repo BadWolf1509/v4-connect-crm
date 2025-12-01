@@ -45,7 +45,7 @@ whatsappRoutes.post('/instances', zValidator('json', createInstanceSchema), asyn
   }
 
   // Configure webhook for this instance
-  const apiUrl = process.env.API_URL || 'http://localhost:3002';
+  const apiUrl = process.env.API_URL || 'http://localhost:3001';
   const webhookUrl = `${apiUrl}/webhooks/whatsapp/evolution`;
 
   await evolutionService.setWebhook(instanceName, {
@@ -295,8 +295,6 @@ whatsappRoutes.post('/send', zValidator('json', sendMessageSchema), async (c) =>
   return c.json(result.data, 201);
 });
 
-// Sync channels with Evolution API instances (only updates status, never deletes)
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sync logic requires multiple conditions for channel states
 whatsappRoutes.post('/sync', async (c) => {
   const auth = c.get('auth');
 

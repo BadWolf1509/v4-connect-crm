@@ -4,6 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { type AppType, requireAuth } from '../middleware/auth';
 import { contactsService } from '../services/contacts.service';
+import { tagsService } from '../services/tags.service';
 
 const contactsRoutes = new Hono<AppType>();
 
@@ -99,7 +100,81 @@ contactsRoutes.delete('/:id', async (c) => {
   return c.json({ message: 'Contact deleted' });
 });
 
-// Add tag to contact
+// Get contact tags (using tags table)
+contactsRoutes.get('/:id/tags', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const contact = await contactsService.findById(id, auth.tenantId);
+  if (!contact) {
+    throw new HTTPException(404, { message: 'Contact not found' });
+  }
+
+  const tags = await tagsService.getContactTags(id, auth.tenantId);
+  return c.json(tags);
+});
+
+// Set all tags for contact
+contactsRoutes.put(
+  '/:id/tags',
+  zValidator('json', z.object({ tagIds: z.array(z.string().uuid()) })),
+  async (c) => {
+    const auth = c.get('auth');
+    const id = c.req.param('id');
+    const { tagIds } = c.req.valid('json');
+
+    const contact = await contactsService.findById(id, auth.tenantId);
+    if (!contact) {
+      throw new HTTPException(404, { message: 'Contact not found' });
+    }
+
+    await tagsService.setContactTags(id, tagIds);
+    const tags = await tagsService.getContactTags(id, auth.tenantId);
+
+    return c.json(tags);
+  },
+);
+
+// Add single tag to contact (using tags table)
+contactsRoutes.post('/:id/tags/:tagId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const tagId = c.req.param('tagId');
+
+  const contact = await contactsService.findById(id, auth.tenantId);
+  if (!contact) {
+    throw new HTTPException(404, { message: 'Contact not found' });
+  }
+
+  const tag = await tagsService.findById(tagId, auth.tenantId);
+  if (!tag) {
+    throw new HTTPException(404, { message: 'Tag not found' });
+  }
+
+  await tagsService.addTagToContact(id, tagId);
+  const tags = await tagsService.getContactTags(id, auth.tenantId);
+
+  return c.json(tags);
+});
+
+// Remove tag from contact (using tags table)
+contactsRoutes.delete('/:id/tags/:tagId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const tagId = c.req.param('tagId');
+
+  const contact = await contactsService.findById(id, auth.tenantId);
+  if (!contact) {
+    throw new HTTPException(404, { message: 'Contact not found' });
+  }
+
+  await tagsService.removeTagFromContact(id, tagId);
+  const tags = await tagsService.getContactTags(id, auth.tenantId);
+
+  return c.json(tags);
+});
+
+// Legacy: Add tag to contact (using jsonb field)
 contactsRoutes.post('/:id/tags', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
@@ -118,19 +193,46 @@ contactsRoutes.post('/:id/tags', async (c) => {
   return c.json(contact);
 });
 
-// Remove tag from contact
-contactsRoutes.delete('/:id/tags/:tag', async (c) => {
+// Get potential duplicates
+contactsRoutes.get('/duplicates', async (c) => {
   const auth = c.get('auth');
-  const id = c.req.param('id');
-  const tag = c.req.param('tag');
+  const result = await contactsService.findDuplicates(auth.tenantId);
+  return c.json(result);
+});
 
-  const contact = await contactsService.removeTag(id, auth.tenantId, tag);
+// Merge contacts
+const mergeSchema = z.object({
+  primaryId: z.string().uuid(),
+  secondaryIds: z.array(z.string().uuid()).min(1),
+  options: z
+    .object({
+      keepPrimaryName: z.boolean().optional(),
+      keepPrimaryPhone: z.boolean().optional(),
+      keepPrimaryEmail: z.boolean().optional(),
+      mergeTags: z.boolean().optional(),
+    })
+    .optional(),
+});
 
-  if (!contact) {
-    throw new HTTPException(404, { message: 'Contact not found' });
+contactsRoutes.post('/merge', zValidator('json', mergeSchema), async (c) => {
+  const auth = c.get('auth');
+  const { primaryId, secondaryIds, options } = c.req.valid('json');
+
+  const result = await contactsService.mergeContacts(
+    primaryId,
+    secondaryIds,
+    auth.tenantId,
+    options,
+  );
+
+  if (!result) {
+    throw new HTTPException(404, { message: 'Primary contact not found' });
   }
 
-  return c.json(contact);
+  return c.json({
+    contact: result,
+    merged: secondaryIds.length,
+  });
 });
 
 export { contactsRoutes };

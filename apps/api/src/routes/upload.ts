@@ -71,7 +71,6 @@ uploadRoutes.post('/avatar', async (c) => {
  * Upload message attachment
  * POST /upload/attachment
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: File upload validation requires multiple checks
 uploadRoutes.post('/attachment', async (c) => {
   const tenantId = c.req.header('x-tenant-id');
   const conversationId = c.req.query('conversationId');
@@ -150,7 +149,6 @@ uploadRoutes.post('/attachment', async (c) => {
  * Upload media file
  * POST /upload/media
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Media upload validation requires multiple checks
 uploadRoutes.post('/media', async (c) => {
   const tenantId = c.req.header('x-tenant-id');
 
