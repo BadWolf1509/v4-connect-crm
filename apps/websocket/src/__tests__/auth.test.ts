@@ -1,183 +1,124 @@
 import type { JWTDecryptResult, KeyLike, ResolvedKey } from 'jose';
 import { jwtDecrypt } from 'jose';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Helper type for mocked jwtDecrypt result
 type MockJWTResult = JWTDecryptResult<Record<string, unknown>> & ResolvedKey<KeyLike>;
 
-// Helper to create a verifyToken-like function for testing
-async function verifyToken(token: string, authSecret: string | undefined) {
-  if (!authSecret) {
-    return null;
-  }
+const loadModule = async () => {
+  return import('../index');
+};
 
-  try {
-    const encoder = new TextEncoder();
-    const secretKey = encoder.encode(authSecret).slice(0, 32);
+describe('WebSocket authentication', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.stubEnv('AUTH_SECRET', 'test-secret-key-32-characters-long');
+  });
 
-    const { payload } = await jwtDecrypt(token, secretKey, {
+  it('returns user payload when token is valid', async () => {
+    const payload = {
+      id: 'user-123',
+      email: 'test@example.com',
+      name: 'Test User',
+      role: 'admin',
+      tenantId: 'tenant-456',
+      avatarUrl: 'https://example.com/avatar.jpg',
+    };
+
+    vi.mocked(jwtDecrypt).mockResolvedValueOnce({
+      payload,
+      protectedHeader: { alg: 'dir', enc: 'A256GCM' },
+      key: new Uint8Array(32),
+    } as MockJWTResult);
+
+    const { verifyToken } = await loadModule();
+    const result = await verifyToken('valid-token');
+
+    expect(result).toEqual(payload);
+    expect(jwtDecrypt).toHaveBeenCalledWith('valid-token', expect.any(Uint8Array), {
       clockTolerance: 15,
     });
-
-    if (payload.id && payload.tenantId) {
-      return {
-        id: payload.id as string,
-        email: payload.email as string,
-        name: payload.name as string,
-        role: payload.role as string,
-        tenantId: payload.tenantId as string,
-        avatarUrl: payload.avatarUrl as string | undefined,
-      };
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-describe('WebSocket Authentication', () => {
-  const authSecret = 'test-secret-key-32-characters-long';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
   });
 
-  describe('verifyToken', () => {
-    it('should return null when authSecret is not provided', async () => {
-      const result = await verifyToken('any-token', undefined);
-      expect(result).toBeNull();
-    });
-
-    it('should return null when authSecret is empty', async () => {
-      const result = await verifyToken('any-token', '');
-      expect(result).toBeNull();
-    });
-
-    it('should return user data for valid token', async () => {
-      const mockPayload = {
-        id: 'user-123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'admin',
-        tenantId: 'tenant-456',
-        avatarUrl: 'https://example.com/avatar.jpg',
-      };
-
-      vi.mocked(jwtDecrypt).mockResolvedValueOnce({
-        payload: mockPayload,
-        protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-        key: new Uint8Array(32),
-      } as MockJWTResult);
-
-      const result = await verifyToken('valid-token', authSecret);
-
-      expect(result).toEqual(mockPayload);
-      expect(jwtDecrypt).toHaveBeenCalledWith(
-        'valid-token',
-        expect.any(Uint8Array),
-        { clockTolerance: 15 }
-      );
-    });
-
-    it('should return null when token is missing required fields', async () => {
-      vi.mocked(jwtDecrypt).mockResolvedValueOnce({
-        payload: { email: 'test@example.com' }, // missing id and tenantId
-        protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-        key: new Uint8Array(32),
-      } as MockJWTResult);
-
-      const result = await verifyToken('incomplete-token', authSecret);
-      expect(result).toBeNull();
-    });
-
-    it('should return null when jwtDecrypt throws error', async () => {
-      vi.mocked(jwtDecrypt).mockRejectedValueOnce(new Error('Invalid token'));
-
-      const result = await verifyToken('invalid-token', authSecret);
-      expect(result).toBeNull();
-    });
-
-    it('should use first 32 bytes of authSecret as key', async () => {
-      const longSecret = 'a'.repeat(64);
-      const mockPayload = {
-        id: 'user-123',
-        tenantId: 'tenant-456',
-        email: 'test@example.com',
-        name: 'Test',
-        role: 'admin',
-      };
-
-      vi.mocked(jwtDecrypt).mockResolvedValueOnce({
-        payload: mockPayload,
-        protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-        key: new Uint8Array(32),
-      } as MockJWTResult);
-
-      await verifyToken('token', longSecret);
-
-      expect(jwtDecrypt).toHaveBeenCalledWith(
-        'token',
-        expect.any(Uint8Array),
-        { clockTolerance: 15 }
-      );
-    });
-
-    it('should handle token without avatarUrl', async () => {
-      const mockPayload = {
-        id: 'user-123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'agent',
-        tenantId: 'tenant-456',
-      };
-
-      vi.mocked(jwtDecrypt).mockResolvedValueOnce({
-        payload: mockPayload,
-        protectedHeader: { alg: 'dir', enc: 'A256GCM' },
-        key: new Uint8Array(32),
-      } as MockJWTResult);
-
-      const result = await verifyToken('valid-token', authSecret);
-
-      expect(result).toEqual({
-        ...mockPayload,
-        avatarUrl: undefined,
-      });
-    });
+  it('returns null when AUTH_SECRET is missing', async () => {
+    vi.stubEnv('AUTH_SECRET', '');
+    const { verifyToken } = await loadModule();
+    const result = await verifyToken('any-token');
+    expect(result).toBeNull();
   });
 
-  describe('Session fallback parsing', () => {
-    it('should parse valid session JSON', () => {
-      const sessionData = {
-        user: {
-          id: 'user-123',
-          tenantId: 'tenant-456',
-          email: 'test@example.com',
-          name: 'Test User',
-          role: 'admin',
+  it('returns null when token payload is incomplete', async () => {
+    vi.mocked(jwtDecrypt).mockResolvedValueOnce({
+      payload: { email: 'test@example.com' },
+      protectedHeader: { alg: 'dir', enc: 'A256GCM' },
+      key: new Uint8Array(32),
+    } as MockJWTResult);
+
+    const { verifyToken } = await loadModule();
+    const result = await verifyToken('incomplete-token');
+    expect(result).toBeNull();
+  });
+
+  it('handles jwtDecrypt failures gracefully', async () => {
+    vi.mocked(jwtDecrypt).mockRejectedValueOnce(new Error('Invalid token'));
+
+    const { verifyToken } = await loadModule();
+    const result = await verifyToken('invalid-token');
+
+    expect(result).toBeNull();
+  });
+
+  it('authentication middleware accepts session JSON fallback', async () => {
+    const { io } = await loadModule();
+    const middleware = vi.mocked(io.use).mock.calls[0]?.[0] as (
+      socket: any,
+      next: (err?: Error) => void,
+    ) => Promise<void>;
+
+    const socket = {
+      handshake: {
+        auth: {
+          token: JSON.stringify({
+            user: {
+              id: 'user-abc',
+              tenantId: 'tenant-xyz',
+              email: 'test@example.com',
+              name: 'Test User',
+              role: 'agent',
+            },
+          }),
         },
-      };
+      },
+      data: {} as Record<string, unknown>,
+    };
 
-      const parsed = JSON.parse(JSON.stringify(sessionData));
-      expect(parsed.user.id).toBe('user-123');
-      expect(parsed.user.tenantId).toBe('tenant-456');
-    });
+    const next = vi.fn();
+    await middleware(socket, next);
 
-    it('should reject session without user id', () => {
-      const sessionData = {
-        user: {
-          email: 'test@example.com',
-          name: 'Test User',
-        },
-      };
+    expect(socket.data.userId).toBe('user-abc');
+    expect(socket.data.tenantId).toBe('tenant-xyz');
+    expect(socket.data.role).toBe('agent');
+    expect(next).toHaveBeenCalledWith();
+  });
 
-      const parsed = JSON.parse(JSON.stringify(sessionData));
-      expect(parsed.user?.id).toBeUndefined();
-    });
+  it('authentication middleware rejects missing token', async () => {
+    const { io } = await loadModule();
+    const middleware = vi.mocked(io.use).mock.calls[0]?.[0] as (
+      socket: any,
+      next: (err?: Error) => void,
+    ) => Promise<void>;
 
-    it('should reject invalid JSON', () => {
-      expect(() => JSON.parse('not-valid-json')).toThrow();
-    });
+    const socket = {
+      handshake: { auth: {} },
+      data: {},
+    };
+
+    const next = vi.fn();
+    await middleware(socket, next);
+
+    expect(next).toHaveBeenCalled();
+    const errorArg = next.mock.calls[0]?.[0] as Error | undefined;
+    expect(errorArg).toBeInstanceOf(Error);
+    expect(errorArg?.message).toBe('Authentication required');
   });
 });

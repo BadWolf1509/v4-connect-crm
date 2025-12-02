@@ -36,36 +36,37 @@ describe('Badge', () => {
     it('should apply secondary variant classes', () => {
       render(<Badge variant="secondary">Secondary</Badge>);
       const badge = screen.getByText('Secondary');
-      expect(badge).toHaveClass('bg-gray-800');
-      expect(badge).toHaveClass('text-gray-400');
+      expect(badge).toHaveClass('bg-v4-gray-800');
+      expect(badge).toHaveClass('text-v4-gray-300');
     });
 
     it('should apply success variant classes', () => {
       render(<Badge variant="success">Success</Badge>);
       const badge = screen.getByText('Success');
-      expect(badge).toHaveClass('bg-green-500/10');
-      expect(badge).toHaveClass('text-green-500');
+      expect(badge).toHaveClass('bg-v4-green/10');
+      expect(badge).toHaveClass('text-v4-green');
     });
 
     it('should apply warning variant classes', () => {
       render(<Badge variant="warning">Warning</Badge>);
       const badge = screen.getByText('Warning');
-      expect(badge).toHaveClass('bg-yellow-500/10');
-      expect(badge).toHaveClass('text-yellow-500');
+      expect(badge).toHaveClass('bg-v4-yellow/10');
+      expect(badge).toHaveClass('text-v4-yellow');
     });
 
     it('should apply destructive variant classes', () => {
       render(<Badge variant="destructive">Error</Badge>);
       const badge = screen.getByText('Error');
-      expect(badge).toHaveClass('bg-red-500/10');
-      expect(badge).toHaveClass('text-red-500');
+      expect(badge).toHaveClass('bg-v4-red-600/10');
+      expect(badge).toHaveClass('text-v4-red-500');
     });
 
     it('should apply outline variant classes', () => {
       render(<Badge variant="outline">Outline</Badge>);
       const badge = screen.getByText('Outline');
       expect(badge).toHaveClass('border');
-      expect(badge).toHaveClass('border-gray-700');
+      expect(badge).toHaveClass('border-v4-gray-700');
+      expect(badge).toHaveClass('text-v4-gray-300');
     });
   });
 
@@ -108,7 +109,7 @@ describe('Badge', () => {
     it('should preserve variant classes when adding custom class', () => {
       render(<Badge variant="success" className="extra">Both</Badge>);
       const badge = screen.getByText('Both');
-      expect(badge).toHaveClass('bg-green-500/10');
+      expect(badge).toHaveClass('bg-v4-green/10');
       expect(badge).toHaveClass('extra');
     });
   });

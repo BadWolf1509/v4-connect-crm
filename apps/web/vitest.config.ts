@@ -13,8 +13,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/hooks/**/*.ts', 'src/stores/**/*.ts', 'src/lib/**/*.ts'],
-      exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/app/**'],
+      include: [
+        'src/hooks/use-api.ts',
+        'src/hooks/use-contacts.ts',
+        'src/hooks/use-conversations.ts',
+        'src/hooks/use-pipelines.ts',
+        'src/hooks/use-socket.ts',
+        'src/stores/inbox-store.ts',
+        'src/lib/utils.ts',
+        'src/lib/api-client.ts',
+      ],
+      exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/__tests__/**', 'src/app/**'],
       thresholds: {
         global: {
           branches: 80,

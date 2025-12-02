@@ -63,6 +63,16 @@ describe('API Service', () => {
       expect(callArgs.headers.Authorization).toBeUndefined();
     });
 
+    it('should merge additional headers when provided', async () => {
+      mockFetch.mockImplementation(() => mockResponse({ data: 'test' }));
+
+      await api.get('/with-headers', { headers: { 'X-Test': 'yes' } });
+
+      const callArgs = mockFetch.mock.calls[0][1];
+      expect(callArgs.headers['X-Test']).toBe('yes');
+      expect(callArgs.headers['Content-Type']).toBe('application/json');
+    });
+
     it('should add query params to URL', async () => {
       mockFetch.mockImplementation(() =>
         mockResponse({ data: 'test' })
@@ -171,6 +181,17 @@ describe('API Service', () => {
         expect.stringContaining('/users/1'),
         expect.objectContaining({ method: 'PATCH' })
       );
+    });
+
+    it('should handle PATCH without body', async () => {
+      mockFetch.mockImplementation(() =>
+        mockResponse({ patched: true })
+      );
+
+      await api.patch('/users/1');
+
+      const callArgs = mockFetch.mock.calls[0][1];
+      expect(callArgs.body).toBeUndefined();
     });
   });
 

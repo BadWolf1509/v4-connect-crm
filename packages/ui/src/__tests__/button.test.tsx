@@ -36,26 +36,26 @@ describe('Button', () => {
     it('should apply destructive variant classes', () => {
       render(<Button variant="destructive">Delete</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-red-500');
+      expect(button).toHaveClass('bg-v4-red-600');
     });
 
     it('should apply outline variant classes', () => {
       render(<Button variant="outline">Outline</Button>);
       const button = screen.getByRole('button');
       expect(button).toHaveClass('border');
-      expect(button).toHaveClass('border-gray-700');
+      expect(button).toHaveClass('border-v4-gray-700');
     });
 
     it('should apply secondary variant classes', () => {
       render(<Button variant="secondary">Secondary</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-gray-800');
+      expect(button).toHaveClass('bg-v4-gray-800');
     });
 
     it('should apply ghost variant classes', () => {
       render(<Button variant="ghost">Ghost</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('text-gray-400');
+      expect(button).toHaveClass('text-v4-gray-300');
     });
 
     it('should apply link variant classes', () => {

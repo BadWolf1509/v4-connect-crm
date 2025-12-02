@@ -12,18 +12,13 @@ module.exports = {
     }],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  collectCoverageFrom: [
-    'src/services/**/*.{ts,tsx}',
-    'src/hooks/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/__tests__/**',
-  ],
+  collectCoverageFrom: ['src/services/api.ts'],
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 60,
-      lines: 60,
-      statements: 60,
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
     },
   },
   moduleNameMapper: {

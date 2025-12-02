@@ -4,15 +4,15 @@ import * as React from 'react';
 import { cn } from '../lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v4-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v4-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-v4-gray-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default: 'bg-v4-red-500 text-white hover:bg-v4-red-600',
-        destructive: 'bg-red-500 text-white hover:bg-red-600',
-        outline: 'border border-gray-700 bg-transparent text-white hover:bg-gray-800',
-        secondary: 'bg-gray-800 text-white hover:bg-gray-700',
-        ghost: 'text-gray-400 hover:bg-gray-800 hover:text-white',
+        destructive: 'bg-v4-red-600 text-white hover:bg-v4-red-700',
+        outline: 'border border-v4-gray-700 bg-transparent text-white hover:bg-v4-gray-800',
+        secondary: 'bg-v4-gray-800 text-white hover:bg-v4-gray-700',
+        ghost: 'text-v4-gray-300 hover:bg-v4-gray-800 hover:text-white',
         link: 'text-v4-red-500 underline-offset-4 hover:underline',
       },
       size: {

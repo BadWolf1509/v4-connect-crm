@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 vi.stubEnv('AUTH_SECRET', 'test-secret-key-32-characters-long');
 vi.stubEnv('REDIS_URL', '');
 vi.stubEnv('PORT', '3003');
+vi.stubEnv('NODE_ENV', 'test');
 
 // Mock ioredis
 vi.mock('ioredis', () => {

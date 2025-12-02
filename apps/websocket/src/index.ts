@@ -6,11 +6,12 @@ import { jwtDecrypt } from 'jose';
 import { Server } from 'socket.io';
 
 const httpServer = createServer();
+const isTestEnv = process.env.NODE_ENV === 'test';
 
 // Auth.js secret for JWT validation
 const authSecret = process.env.AUTH_SECRET;
 if (!authSecret) {
-  console.warn('⚠️ AUTH_SECRET not configured, using mock authentication');
+  console.warn('[Auth] AUTH_SECRET not configured, using mock authentication');
 }
 
 // Redis for Socket.IO adapter (horizontal scaling)
@@ -35,12 +36,12 @@ if (redisUrl) {
     pubClient = new Redis(redisUrl);
     subClient = pubClient.duplicate();
     io.adapter(createAdapter(pubClient, subClient));
-    console.log('✅ Redis adapter connected');
+    console.log('[Socket] Redis adapter connected');
   } catch (_error) {
-    console.warn('⚠️ Redis not available, running without adapter (single instance mode)');
+    console.warn('[Socket] Redis not available, running without adapter (single instance mode)');
   }
 } else {
-  console.log('ℹ️ Running without Redis adapter (single instance mode)');
+  console.log('[Socket] Running without Redis adapter (single instance mode)');
 }
 
 // JWT token validation
@@ -53,7 +54,7 @@ interface TokenPayload {
   avatarUrl?: string;
 }
 
-async function verifyToken(token: string): Promise<TokenPayload | null> {
+export async function verifyToken(token: string): Promise<TokenPayload | null> {
   if (!authSecret) {
     // Mock mode for development without AUTH_SECRET
     console.warn('[Auth] Using mock authentication');
@@ -222,7 +223,7 @@ if (redisUrl) {
       console.error('Failed to subscribe to socket events:', err);
       return;
     }
-    console.log('✅ Subscribed to socket events channel');
+    console.log('[Socket] Subscribed to socket events channel');
   });
 
   eventSubscriber.on('message', (_channel, message) => {
@@ -254,6 +255,8 @@ if (redisUrl) {
 
 const port = Number.parseInt(process.env.PORT || '3003', 10);
 
-httpServer.listen(port, () => {
-  console.log(`🔌 V4 Connect WebSocket running on http://localhost:${port}`);
-});
+if (!isTestEnv) {
+  httpServer.listen(port, () => {
+    console.log(`[Socket] V4 Connect WebSocket running on http://localhost:${port}`);
+  });
+}
