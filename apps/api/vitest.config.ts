@@ -29,7 +29,13 @@ export default defineConfig({
         'src/services/socket-events.service.ts',
         'src/services/storage.service.ts',
       ],
-      exclude: ['src/**/*.{test,spec}.ts', 'src/__tests__/**', 'src/types/**', 'src/index.ts', 'src/env.ts'],
+      exclude: [
+        'src/**/*.{test,spec}.ts',
+        'src/__tests__/**',
+        'src/types/**',
+        'src/index.ts',
+        'src/env.ts',
+      ],
       thresholds: {
         global: {
           branches: 80,
