@@ -4,7 +4,9 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { AppType } from '../middleware/auth';
+import { emailService } from '../services/email.service';
 import { invitesService } from '../services/invites.service';
+import { tenantsService } from '../services/tenants.service';
 import { usersService } from '../services/users.service';
 
 const inviteAcceptRoutes = new Hono<AppType>();
@@ -84,6 +86,14 @@ inviteAcceptRoutes.post('/:token/accept', zValidator('json', acceptInviteSchema)
 
   // Mark invite as accepted
   await invitesService.accept(token, user.id);
+
+  // Send welcome email
+  const tenant = await tenantsService.findById(invite.tenantId);
+  await emailService.sendWelcome({
+    email: user.email,
+    userName: user.name,
+    tenantName: tenant?.name || 'V4 Connect',
+  });
 
   return c.json({
     success: true,

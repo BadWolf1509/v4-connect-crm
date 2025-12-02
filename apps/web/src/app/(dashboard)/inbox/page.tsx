@@ -438,22 +438,25 @@ export default function InboxPage() {
 
   // Handle file upload completion
   const handleFileUploaded = useCallback(
-    (file: { url: string; type: string; filename: string }) => {
+    (file: { id?: string; url: string; type: string; filename: string; messageId?: string }) => {
       if (!selectedConversationId) return;
 
-      // Add message with the uploaded file
-      const tempMessage: Message = {
-        id: `temp-${Date.now()}`,
+      // If messageId is provided, the message was already created on the server
+      // and will be delivered via socket event, so just add it optimistically
+      const messageId = file.messageId || file.id || `temp-${Date.now()}`;
+
+      const uploadedMessage: Message = {
+        id: messageId,
         conversationId: selectedConversationId,
         content: file.filename,
         type: file.type as 'image' | 'audio' | 'video' | 'file',
         sender: 'user',
         senderName: session?.user?.name || undefined,
         timestamp: new Date().toISOString(),
-        status: 'sent',
+        status: file.messageId ? 'sending' : 'sent',
         mediaUrl: file.url,
       };
-      addMessage(selectedConversationId, tempMessage);
+      addMessage(selectedConversationId, uploadedMessage);
       setShowMediaUpload(false);
     },
     [selectedConversationId, session, addMessage],

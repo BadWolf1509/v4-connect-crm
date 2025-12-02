@@ -2,7 +2,6 @@
 
 import { cn } from '@/lib/utils';
 import { FileText, Image, Loader2, Music, Video, X } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import { useCallback, useRef, useState } from 'react';
 
 interface UploadedFile {
@@ -14,6 +13,25 @@ interface UploadedFile {
   size: number;
   contentType: string;
   preview?: string;
+  messageId?: string;
+}
+
+interface UploadResponse {
+  message: {
+    id: string;
+    conversationId: string;
+    content: string;
+    type: string;
+    mediaUrl: string;
+    mediaType: string;
+    status: string;
+  };
+  url: string;
+  path: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  size: number;
+  mimeType: string;
+  fileName: string;
 }
 
 interface MediaUploadProps {
@@ -66,7 +84,6 @@ function getFileIcon(type: 'image' | 'video' | 'audio' | 'document') {
 }
 
 export function MediaUpload({ conversationId, onFileUploaded, onClose }: MediaUploadProps) {
-  const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -153,34 +170,35 @@ export function MediaUpload({ conversationId, onFileUploaded, onClose }: MediaUp
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('conversationId', conversationId);
 
+      // Use the new /messages/upload endpoint that handles upload + message creation
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/upload/attachment?conversationId=${conversationId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/messages/upload`,
         {
           method: 'POST',
           body: formData,
-          headers: {
-            'x-tenant-id': session?.user?.tenantId || '',
-          },
+          credentials: 'include',
         },
       );
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Upload failed');
+        throw new Error(data.message || data.error || 'Upload failed');
       }
 
-      const data = await response.json();
+      const data: UploadResponse = await response.json();
 
       const uploadedFile: UploadedFile = {
-        id: `file-${Date.now()}`,
+        id: data.message.id,
         url: data.url,
         path: data.path,
         type: data.type,
-        filename: data.filename,
+        filename: data.fileName,
         size: data.size,
-        contentType: data.contentType,
+        contentType: data.mimeType,
         preview: preview || undefined,
+        messageId: data.message.id,
       };
 
       onFileUploaded(uploadedFile);

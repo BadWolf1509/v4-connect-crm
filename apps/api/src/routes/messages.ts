@@ -182,31 +182,122 @@ messagesRoutes.get('/conversation/:conversationId/unread', async (c) => {
   return c.json({ unreadCount: count });
 });
 
-// Upload media
+// Upload and send media message
 messagesRoutes.post('/upload', async (c) => {
+  const auth = c.get('auth');
   const body = await c.req.parseBody();
   const file = body.file;
+  const conversationId = body.conversationId as string;
 
   if (!file || !(file instanceof File)) {
     throw new HTTPException(400, { message: 'File is required' });
   }
 
-  // TODO: Upload file to storage (S3, Supabase Storage, etc.)
-  // For now, return a placeholder response
+  if (!conversationId) {
+    throw new HTTPException(400, { message: 'conversationId is required' });
+  }
 
-  return c.json({
-    url: `https://storage.example.com/${crypto.randomUUID()}`,
-    type: file.type.startsWith('image/')
-      ? 'image'
-      : file.type.startsWith('video/')
-        ? 'video'
-        : file.type.startsWith('audio/')
-          ? 'audio'
-          : 'document',
-    size: file.size,
-    mimeType: file.type,
-    fileName: file.name,
+  // Verify conversation belongs to tenant
+  const conversation = await conversationsService.findById(conversationId, auth.tenantId);
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
+  }
+
+  // Get channel for sending
+  const channel = await channelsService.findById(conversation.channelId, auth.tenantId);
+  if (!channel) {
+    throw new HTTPException(404, { message: 'Channel not found' });
+  }
+
+  // Determine media type
+  const mediaType = file.type.startsWith('image/')
+    ? 'image'
+    : file.type.startsWith('video/')
+      ? 'video'
+      : file.type.startsWith('audio/')
+        ? 'audio'
+        : 'document';
+
+  // Upload to Supabase Storage
+  const { storageService } = await import('../services/storage.service');
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const uploadResult = await storageService.uploadAttachment(
+    auth.tenantId,
+    conversationId,
+    file.name,
+    buffer,
+    file.type,
+  );
+
+  if (!uploadResult.success) {
+    throw new HTTPException(500, { message: uploadResult.error || 'Upload failed' });
+  }
+
+  // Create message in database
+  const message = await messagesService.create({
+    tenantId: auth.tenantId,
+    conversationId,
+    senderId: auth.userId,
+    senderType: 'user',
+    type: mediaType as 'image' | 'video' | 'audio' | 'document',
+    content: file.name,
+    mediaUrl: uploadResult.url,
+    mediaType: file.type,
   });
+
+  // Queue message for sending via channel
+  const channelType: SendMessageJob['channelType'] =
+    channel.type === 'whatsapp' && channel.provider === 'evolution'
+      ? 'whatsapp_unofficial'
+      : channel.type === 'whatsapp'
+        ? 'whatsapp_official'
+        : (channel.type as SendMessageJob['channelType']);
+
+  try {
+    await addSendMessageJob({
+      tenantId: auth.tenantId,
+      conversationId,
+      channelId: channel.id,
+      channelType,
+      messageId: message.id,
+      message: {
+        type: mediaType as 'image' | 'video' | 'audio' | 'document',
+        content: file.name,
+        mediaUrl: uploadResult.url,
+        mediaMimeType: file.type,
+      },
+      recipientPhone: conversation.contact?.phone || undefined,
+      recipientExternalId: conversation.contact?.externalId || undefined,
+      senderId: auth.userId,
+    });
+  } catch (error) {
+    console.error('[Messages] Failed to enqueue media send job', error);
+  }
+
+  // Emit socket event
+  const emit =
+    socketEventsService.emitMessageUpdate ||
+    socketEventsService.emitNewMessage?.bind(socketEventsService);
+  if (emit) {
+    await emit(conversationId, {
+      ...message,
+      status: 'pending',
+    });
+  }
+
+  return c.json(
+    {
+      message,
+      url: uploadResult.url,
+      path: uploadResult.path,
+      type: mediaType,
+      size: file.size,
+      mimeType: file.type,
+      fileName: file.name,
+    },
+    201,
+  );
 });
 
 export { messagesRoutes };

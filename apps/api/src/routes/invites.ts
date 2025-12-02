@@ -3,7 +3,9 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { type AppType, requireAuth } from '../middleware/auth';
+import { emailService } from '../services/email.service';
 import { invitesService } from '../services/invites.service';
+import { tenantsService } from '../services/tenants.service';
 import { usersService } from '../services/users.service';
 
 const invitesRoutes = new Hono<AppType>();
@@ -57,6 +59,10 @@ invitesRoutes.post('/', zValidator('json', createInviteSchema), async (c) => {
     throw new HTTPException(400, { message: 'An invite is already pending for this email' });
   }
 
+  // Get inviter and tenant info for the email
+  const inviter = await usersService.findById(auth.userId, auth.tenantId);
+  const tenant = await tenantsService.findById(auth.tenantId);
+
   const invite = await invitesService.create({
     tenantId: auth.tenantId,
     email: data.email,
@@ -64,13 +70,26 @@ invitesRoutes.post('/', zValidator('json', createInviteSchema), async (c) => {
     invitedById: auth.userId,
   });
 
-  // TODO: Send email with invite link
-  // For now, return the token in response for testing
+  if (!invite) {
+    throw new HTTPException(500, { message: 'Failed to create invite' });
+  }
+
+  // Send invite email
+  const emailResult = await emailService.sendInvite({
+    email: data.email,
+    token: invite.token,
+    inviterName: inviter?.name || 'Um membro',
+    tenantName: tenant?.name || 'V4 Connect',
+    role: data.role,
+  });
+
+  const inviteUrl = `${process.env.WEB_URL || 'http://localhost:3002'}/invite/${invite.token}`;
+
   return c.json(
     {
       invite,
-      // Include invite URL for testing (in production, this would be sent via email)
-      inviteUrl: `${process.env.WEB_URL || 'http://localhost:3002'}/invite/${invite?.token}`,
+      inviteUrl,
+      emailSent: emailResult.success,
     },
     201,
   );
@@ -87,11 +106,25 @@ invitesRoutes.post('/:id/resend', async (c) => {
     throw new HTTPException(404, { message: 'Invite not found or not pending' });
   }
 
-  // TODO: Send email with new invite link
+  // Get inviter and tenant info for the email
+  const inviter = await usersService.findById(auth.userId, auth.tenantId);
+  const tenant = await tenantsService.findById(auth.tenantId);
+
+  // Send invite email
+  const emailResult = await emailService.sendInvite({
+    email: invite.email,
+    token: invite.token,
+    inviterName: inviter?.name || 'Um membro',
+    tenantName: tenant?.name || 'V4 Connect',
+    role: invite.role,
+  });
+
+  const inviteUrl = `${process.env.WEB_URL || 'http://localhost:3002'}/invite/${invite.token}`;
 
   return c.json({
     invite,
-    inviteUrl: `${process.env.WEB_URL || 'http://localhost:3002'}/invite/${invite.token}`,
+    inviteUrl,
+    emailSent: emailResult.success,
   });
 });
 
