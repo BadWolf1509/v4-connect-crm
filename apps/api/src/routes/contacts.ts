@@ -157,17 +157,30 @@ contactsRoutes.post('/:id/tags/:tagId', async (c) => {
   return c.json(tags);
 });
 
-// Remove tag from contact (using tags table)
+// Remove tag from contact (supports tagId or legacy tag name)
 contactsRoutes.delete('/:id/tags/:tagId', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id');
-  const tagId = c.req.param('tagId');
+  const tagParam = c.req.param('tagId');
+  const isUuid =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      tagParam,
+    );
+
+  if (!isUuid) {
+    const contact = await contactsService.removeTag(id, auth.tenantId, tagParam);
+    if (!contact) {
+      throw new HTTPException(404, { message: 'Contact not found' });
+    }
+    return c.json(contact);
+  }
 
   const contact = await contactsService.findById(id, auth.tenantId);
   if (!contact) {
     throw new HTTPException(404, { message: 'Contact not found' });
   }
 
+  const tagId = tagParam;
   await tagsService.removeTagFromContact(id, tagId);
   const tags = await tagsService.getContactTags(id, auth.tenantId);
 

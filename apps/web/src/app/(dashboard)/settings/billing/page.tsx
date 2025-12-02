@@ -148,7 +148,7 @@ export default function BillingSettingsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Plano e Faturamento</h1>
+        <h1 className="text-white">Plano e Faturamento</h1>
         <p className="mt-1 text-sm text-gray-400">Gerencie seu plano e informações de pagamento</p>
       </div>
 

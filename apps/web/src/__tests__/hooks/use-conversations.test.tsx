@@ -4,12 +4,12 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock apiClient
-const mockApiClient = {
+const mockApiClient = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
   delete: vi.fn(),
-};
+}));
 
 vi.mock('@/lib/api-client', () => ({
   apiClient: mockApiClient,

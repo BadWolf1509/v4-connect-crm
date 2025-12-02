@@ -218,6 +218,7 @@ export const analyticsService = {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
+    const startDateStr = startDate.toISOString();
 
     // Calculate response times using a CTE (Common Table Expression)
     // For each inbound message, find the next outbound message in the same conversation
@@ -231,7 +232,7 @@ export const analyticsService = {
         WHERE tenant_id = ${tenantId}
           AND direction = 'inbound'
           AND sender_type = 'contact'
-          AND created_at >= ${startDate}
+          AND created_at >= ${startDateStr}::timestamptz
           AND deleted_at IS NULL
       ),
       response_pairs AS (
@@ -281,6 +282,7 @@ export const analyticsService = {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
+    const startDateStr = startDate.toISOString();
 
     const result = await db.execute(sql`
       WITH inbound_messages AS (
@@ -292,7 +294,7 @@ export const analyticsService = {
         WHERE tenant_id = ${tenantId}
           AND direction = 'inbound'
           AND sender_type = 'contact'
-          AND created_at >= ${startDate}
+          AND created_at >= ${startDateStr}::timestamptz
           AND deleted_at IS NULL
       ),
       response_pairs AS (
@@ -336,6 +338,7 @@ export const analyticsService = {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
+    const startDateStr = startDate.toISOString();
 
     const result = await db.execute(sql`
       WITH inbound_messages AS (
@@ -348,7 +351,7 @@ export const analyticsService = {
         WHERE tenant_id = ${tenantId}
           AND direction = 'inbound'
           AND sender_type = 'contact'
-          AND created_at >= ${startDate}
+          AND created_at >= ${startDateStr}::timestamptz
           AND deleted_at IS NULL
       ),
       response_pairs AS (

@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import {
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -15,6 +16,17 @@ import { tenants } from './tenants';
 import { users } from './users';
 
 export const dealStatusEnum = pgEnum('deal_status', ['open', 'won', 'lost']);
+
+export const dealHistoryTypeEnum = pgEnum('deal_history_type', [
+  'created',
+  'stage_changed',
+  'status_changed',
+  'assignee_changed',
+  'value_changed',
+  'field_updated',
+  'note_added',
+  'activity_added',
+]);
 
 export const deals = pgTable(
   'deals',
@@ -66,6 +78,27 @@ export const activities = pgTable('activities', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const dealHistory = pgTable(
+  'deal_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    dealId: uuid('deal_id')
+      .notNull()
+      .references(() => deals.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    type: dealHistoryTypeEnum('type').notNull(),
+    previousValue: jsonb('previous_value'),
+    newValue: jsonb('new_value'),
+    metadata: jsonb('metadata').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    dealIdx: index('deal_history_deal_idx').on(t.dealId),
+    typeIdx: index('deal_history_type_idx').on(t.type),
+    createdAtIdx: index('deal_history_created_at_idx').on(t.createdAt),
+  }),
+);
+
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   tenant: one(tenants, {
     fields: [deals.tenantId],
@@ -88,6 +121,7 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
     references: [users.id],
   }),
   activities: many(activities),
+  history: many(dealHistory),
 }));
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
@@ -101,7 +135,21 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
   }),
 }));
 
+export const dealHistoryRelations = relations(dealHistory, ({ one }) => ({
+  deal: one(deals, {
+    fields: [dealHistory.dealId],
+    references: [deals.id],
+  }),
+  user: one(users, {
+    fields: [dealHistory.userId],
+    references: [users.id],
+  }),
+}));
+
 export type Deal = typeof deals.$inferSelect;
 export type NewDeal = typeof deals.$inferInsert;
 export type Activity = typeof activities.$inferSelect;
 export type NewActivity = typeof activities.$inferInsert;
+export type DealHistory = typeof dealHistory.$inferSelect;
+export type NewDealHistory = typeof dealHistory.$inferInsert;
+export type DealHistoryType = (typeof dealHistoryTypeEnum.enumValues)[number];

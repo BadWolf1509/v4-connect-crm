@@ -15,6 +15,8 @@ const mockDealsService = {
   getActivities: vi.fn(),
   createActivity: vi.fn(),
   completeActivity: vi.fn(),
+  recordHistory: vi.fn(),
+  getHistory: vi.fn(),
   deleteActivity: vi.fn(),
 };
 

@@ -186,7 +186,7 @@ function ResponseTimeCard({ metrics }: { metrics: ResponseTimeMetrics | undefine
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Timer className="h-12 w-12 text-gray-600" />
           <p className="mt-2 text-gray-400">Sem dados de resposta</p>
-          <p className="text-sm text-gray-500">As m�tricas aparecer�o quando houver conversas</p>
+          <p className="text-sm text-gray-500">As métricas aparecerão quando houver conversas</p>
         </div>
       )}
     </div>
@@ -352,9 +352,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-white">Dashboard</h1>
         <p className="text-gray-400">Visão geral do seu atendimento</p>
       </div>
 

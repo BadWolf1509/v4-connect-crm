@@ -1,7 +1,8 @@
+import type { DealHistoryType } from '@v4-connect/database';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
-const { deals, pipelines, stages, contacts, users, activities } = schema;
+const { deals, pipelines, stages, contacts, users, activities, dealHistory } = schema;
 
 export interface DealFilters {
   tenantId: string;
@@ -425,5 +426,52 @@ export const dealsService = {
     const result = await db.delete(activities).where(eq(activities.id, activityId)).returning();
 
     return result[0] || null;
+  },
+
+  // History
+  async recordHistory(
+    dealId: string,
+    userId: string | null,
+    type: DealHistoryType,
+    previousValue: unknown,
+    newValue: unknown,
+    metadata: Record<string, unknown> = {},
+  ) {
+    const result = await db
+      .insert(dealHistory)
+      .values({
+        dealId,
+        userId,
+        type,
+        previousValue,
+        newValue,
+        metadata,
+      })
+      .returning();
+
+    return result[0];
+  },
+
+  async getHistory(dealId: string) {
+    const data = await db
+      .select({
+        id: dealHistory.id,
+        type: dealHistory.type,
+        previousValue: dealHistory.previousValue,
+        newValue: dealHistory.newValue,
+        metadata: dealHistory.metadata,
+        createdAt: dealHistory.createdAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        },
+      })
+      .from(dealHistory)
+      .leftJoin(users, eq(dealHistory.userId, users.id))
+      .where(eq(dealHistory.dealId, dealId))
+      .orderBy(desc(dealHistory.createdAt));
+
+    return data;
   },
 };

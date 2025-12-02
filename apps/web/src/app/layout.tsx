@@ -1,11 +1,22 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Bebas_Neue, Montserrat } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
 
-const inter = Inter({
+// V4 Company Brand Typography - Montserrat (Primary)
+const montserrat = Montserrat({
   subsets: ['latin'],
-  variable: '--font-sans',
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-montserrat',
+  display: 'swap',
+});
+
+// V4 Company Brand Typography - Bebas Neue (Display/Headings)
+const bebasNeue = Bebas_Neue({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-bebas',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -28,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${montserrat.variable} ${bebasNeue.variable} font-montserrat antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -425,9 +425,9 @@ export default function CRMPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-800 p-4">
+      <div className="flex items-center justify-between border-b border-gray-800 p-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">CRM</h1>
+          <h1 className="text-white">CRM</h1>
           <p className="text-gray-400">Gerencie seus negócios</p>
         </div>
         <div className="flex items-center gap-3">
@@ -479,7 +479,7 @@ export default function CRMPage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-4">
+      <div className="flex-1 overflow-x-auto p-6">
         <div className="flex h-full gap-4">
           {currentPipeline?.stages
             ?.sort((a, b) => a.order - b.order)

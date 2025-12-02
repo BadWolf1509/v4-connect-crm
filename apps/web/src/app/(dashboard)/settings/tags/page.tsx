@@ -142,7 +142,7 @@ export default function TagsSettingsPage() {
     (tag: TagData) => {
       if (
         confirm(
-          `Deseja excluir a tag "${tag.name}"? Esta a��o remover� a tag de todos os contatos.`,
+          `Deseja excluir a tag "${tag.name}"? Esta ação removerá a tag de todos os contatos.`,
         )
       ) {
         deleteMutation.mutate(tag.id);
@@ -164,7 +164,7 @@ export default function TagsSettingsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Tags</h1>
+        <h1 className="text-white">Tags</h1>
         <p className="mt-1 text-sm text-gray-400">
           Gerencie as tags para segmentar e organizar seus contatos
         </p>

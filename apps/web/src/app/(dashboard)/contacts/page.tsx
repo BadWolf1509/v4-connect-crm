@@ -226,7 +226,7 @@ export default function ContactsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Contatos</h2>
+          <h1 className="text-white">Contatos</h1>
           <p className="text-sm text-gray-400">
             {total} contato{total !== 1 ? 's' : ''} cadastrado{total !== 1 ? 's' : ''}
           </p>

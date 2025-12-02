@@ -103,4 +103,114 @@ chatbotsRoutes.post('/:id/toggle', async (c) => {
   return c.json({ chatbot });
 });
 
+// ============ Flow Nodes ============
+
+const createNodeSchema = z.object({
+  type: z.enum(['start', 'message', 'condition', 'action', 'delay', 'end']),
+  name: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+  position: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+    })
+    .optional(),
+});
+
+const updateNodeSchema = z.object({
+  name: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+  position: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+    })
+    .optional(),
+});
+
+// Add node to chatbot
+chatbotsRoutes.post('/:id/nodes', zValidator('json', createNodeSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
+
+  const existing = await chatbotsService.findById(id, auth.tenantId);
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Chatbot not found' });
+  }
+
+  const node = await chatbotsService.addNode(id, data);
+  return c.json({ node }, 201);
+});
+
+// Update node
+chatbotsRoutes.patch('/:id/nodes/:nodeId', zValidator('json', updateNodeSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const nodeId = c.req.param('nodeId');
+  const data = c.req.valid('json');
+
+  const existing = await chatbotsService.findById(id, auth.tenantId);
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Chatbot not found' });
+  }
+
+  const node = await chatbotsService.updateNode(nodeId, data);
+  return c.json({ node });
+});
+
+// Delete node
+chatbotsRoutes.delete('/:id/nodes/:nodeId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const nodeId = c.req.param('nodeId');
+
+  const existing = await chatbotsService.findById(id, auth.tenantId);
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Chatbot not found' });
+  }
+
+  await chatbotsService.deleteNode(nodeId);
+  return c.json({ success: true });
+});
+
+// ============ Flow Edges ============
+
+const createEdgeSchema = z.object({
+  sourceId: z.string().uuid(),
+  targetId: z.string().uuid(),
+  label: z.string().optional(),
+  condition: z.record(z.unknown()).optional(),
+});
+
+// Add edge to chatbot
+chatbotsRoutes.post('/:id/edges', zValidator('json', createEdgeSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
+
+  const existing = await chatbotsService.findById(id, auth.tenantId);
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Chatbot not found' });
+  }
+
+  const edge = await chatbotsService.addEdge(id, data);
+  return c.json({ edge }, 201);
+});
+
+// Delete edge
+chatbotsRoutes.delete('/:id/edges/:edgeId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const edgeId = c.req.param('edgeId');
+
+  const existing = await chatbotsService.findById(id, auth.tenantId);
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Chatbot not found' });
+  }
+
+  await chatbotsService.deleteEdge(edgeId);
+  return c.json({ success: true });
+});
+
 export { chatbotsRoutes };

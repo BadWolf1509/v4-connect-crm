@@ -4,6 +4,7 @@ import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import {
   Bot,
+  Edit3,
   Loader2,
   MessageSquare,
   MoreVertical,
@@ -15,6 +16,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -231,7 +233,7 @@ export default function ChatbotsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Chatbots</h2>
+          <h1 className="text-white">Chatbots</h1>
           <p className="text-sm text-gray-400">Crie fluxos de automação para suas conversas</p>
         </div>
         <button
@@ -282,7 +284,15 @@ export default function ChatbotsPage() {
                   <MoreVertical className="h-4 w-4" />
                 </button>
                 {menuOpen === chatbot.id && (
-                  <div className="absolute right-0 top-8 z-10 w-40 rounded-lg border border-gray-800 bg-gray-900 py-1 shadow-lg">
+                  <div className="absolute right-0 top-8 z-10 w-44 rounded-lg border border-gray-800 bg-gray-900 py-1 shadow-lg">
+                    <Link
+                      href={`/chatbots/${chatbot.id}/editor`}
+                      onClick={() => setMenuOpen(null)}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:bg-gray-800 hover:text-white"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Editar Fluxo
+                    </Link>
                     <button
                       type="button"
                       onClick={() => {

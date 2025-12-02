@@ -266,7 +266,7 @@ export default function CampaignsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Campanhas</h2>
+          <h1 className="text-white">Campanhas</h1>
           <p className="text-sm text-gray-400">Crie e gerencie campanhas de mensagens em massa</p>
         </div>
         <button

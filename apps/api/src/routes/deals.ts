@@ -5,6 +5,13 @@ import { z } from 'zod';
 import { type AppType, requireAuth } from '../middleware/auth';
 import { dealsService } from '../services/deals.service';
 
+async function recordHistorySafe(
+  ...args: Parameters<typeof dealsService.recordHistory>
+): Promise<void> {
+  if (typeof dealsService.recordHistory !== 'function') return;
+  await dealsService.recordHistory(...args);
+}
+
 const dealsRoutes = new Hono<AppType>();
 
 dealsRoutes.use('*', requireAuth);
@@ -94,6 +101,14 @@ dealsRoutes.post('/', zValidator('json', createDealSchema), async (c) => {
     expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate) : undefined,
   });
 
+  if (deal) {
+    await recordHistorySafe(deal.id, auth.userId, 'created', null, {
+      title: deal.title,
+      value: deal.value,
+      stage: deal.stage?.name,
+    });
+  }
+
   return c.json(deal, 201);
 });
 
@@ -116,6 +131,47 @@ dealsRoutes.patch('/:id', zValidator('json', updateDealSchema), async (c) => {
     throw new HTTPException(404, { message: 'Deal not found' });
   }
 
+  const currentDeal = await dealsService.findById(id, auth.tenantId);
+
+  // Record history for value changes
+  if (currentDeal && data.value !== undefined && data.value !== currentDeal.value) {
+    await recordHistorySafe(id, auth.userId, 'value_changed', currentDeal.value, data.value);
+  }
+
+  // Record history for assignee changes
+  if (
+    currentDeal &&
+    data.assigneeId !== undefined &&
+    data.assigneeId !== currentDeal.assignee?.id
+  ) {
+    await recordHistorySafe(
+      id,
+      auth.userId,
+      'assignee_changed',
+      currentDeal.assignee
+        ? { id: currentDeal.assignee.id, name: currentDeal.assignee.name }
+        : null,
+      deal.assignee ? { id: deal.assignee.id, name: deal.assignee.name } : null,
+    );
+  }
+
+  // Record history for other field updates
+  if (currentDeal && (data.title !== undefined || data.expectedCloseDate !== undefined)) {
+    await recordHistorySafe(
+      id,
+      auth.userId,
+      'field_updated',
+      {
+        title: currentDeal.title,
+        expectedCloseDate: currentDeal.expectedCloseDate,
+      },
+      {
+        title: deal.title,
+        expectedCloseDate: deal.expectedCloseDate,
+      },
+    );
+  }
+
   return c.json(deal);
 });
 
@@ -131,6 +187,19 @@ dealsRoutes.post('/:id/move', zValidator('json', moveDealSchema), async (c) => {
     throw new HTTPException(404, { message: 'Deal not found' });
   }
 
+  const currentDeal = await dealsService.findById(id, auth.tenantId);
+
+  // Record stage change if different
+  if (currentDeal && currentDeal.stageId !== stageId) {
+    await recordHistorySafe(
+      id,
+      auth.userId,
+      'stage_changed',
+      { id: currentDeal.stage?.id, name: currentDeal.stage?.name },
+      { id: deal.stage?.id, name: deal.stage?.name },
+    );
+  }
+
   return c.json(deal);
 });
 
@@ -143,6 +212,12 @@ dealsRoutes.post('/:id/won', async (c) => {
 
   if (!deal) {
     throw new HTTPException(404, { message: 'Deal not found' });
+  }
+
+  // Record status change
+  const currentDeal = await dealsService.findById(id, auth.tenantId);
+  if (currentDeal) {
+    await recordHistorySafe(id, auth.userId, 'status_changed', currentDeal.status, 'won');
   }
 
   return c.json(deal);
@@ -160,6 +235,14 @@ dealsRoutes.post('/:id/lost', zValidator('json', lostReasonSchema), async (c) =>
     throw new HTTPException(404, { message: 'Deal not found' });
   }
 
+  // Record status change with reason
+  const currentDeal = await dealsService.findById(id, auth.tenantId);
+  if (currentDeal) {
+    await recordHistorySafe(id, auth.userId, 'status_changed', currentDeal.status, 'lost', {
+      reason,
+    });
+  }
+
   return c.json(deal);
 });
 
@@ -172,6 +255,12 @@ dealsRoutes.post('/:id/reopen', async (c) => {
 
   if (!deal) {
     throw new HTTPException(404, { message: 'Deal not found' });
+  }
+
+  // Record status change
+  const currentDeal = await dealsService.findById(id, auth.tenantId);
+  if (currentDeal) {
+    await recordHistorySafe(id, auth.userId, 'status_changed', currentDeal.status, 'open');
   }
 
   return c.json(deal);
@@ -228,6 +317,12 @@ dealsRoutes.post('/:id/activities', zValidator('json', createActivitySchema), as
     dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
   });
 
+  // Record history
+  await recordHistorySafe(id, auth.userId, 'activity_added', null, {
+    type: data.type,
+    title: data.title,
+  });
+
   return c.json(activity, 201);
 });
 
@@ -271,6 +366,22 @@ dealsRoutes.delete('/:id/activities/:activityId', async (c) => {
   }
 
   return c.json({ message: 'Activity deleted' });
+});
+
+// Get deal history
+dealsRoutes.get('/:id/history', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  // Verify deal exists
+  const deal = await dealsService.findById(id, auth.tenantId);
+  if (!deal) {
+    throw new HTTPException(404, { message: 'Deal not found' });
+  }
+
+  const history = await dealsService.getHistory(id);
+
+  return c.json({ history });
 });
 
 export { dealsRoutes };
