@@ -2,6 +2,8 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db, schema } from '../lib/db';
 import { publishConversationUpdate, publishNewConversation, publishNewMessage } from '../lib/redis';
+import { automationExecutorService } from '../services/automation-executor.service';
+import { chatbotExecutorService } from '../services/chatbot-executor.service';
 import { contactsService } from '../services/contacts.service';
 import { conversationsService } from '../services/conversations.service';
 import { messagesService } from '../services/messages.service';
@@ -176,6 +178,58 @@ webhooksRoutes.post('/whatsapp/evolution', async (c) => {
         } else {
           // Update existing conversation (lastMessageAt changed)
           await publishConversationUpdate(channel.tenantId, fullConversation);
+        }
+
+        // Trigger chatbot if applicable (only for text messages)
+        if (type === 'text' && content) {
+          try {
+            // Check if there's an active chatbot execution waiting for response
+            const activeExecution = await chatbotExecutorService.getActiveExecution(
+              conversation.id,
+            );
+
+            if (activeExecution) {
+              // Continue existing chatbot conversation
+              await chatbotExecutorService.continueExecution(activeExecution, content);
+            } else {
+              // Check if any chatbot should be triggered
+              const triggeredChatbots = await chatbotExecutorService.findTriggeredChatbots(
+                channel.id,
+                channel.tenantId,
+                content,
+              );
+
+              if (triggeredChatbots.length > 0) {
+                // Start execution with the first matching chatbot
+                const chatbot = triggeredChatbots[0];
+                if (chatbot) {
+                  await chatbotExecutorService.startExecution(
+                    chatbot.id,
+                    conversation.id,
+                    contact.id,
+                    channel.tenantId,
+                    channel.id,
+                    content,
+                  );
+                }
+              }
+            }
+          } catch (chatbotError) {
+            console.error('[Chatbot] Error processing message:', chatbotError);
+          }
+        }
+
+        // Trigger automations for message_received
+        try {
+          await automationExecutorService.processTrigger('message_received', {
+            tenantId: channel.tenantId,
+            conversationId: conversation.id,
+            contactId: contact.id,
+            channelId: channel.id,
+            messageContent: content || undefined,
+          });
+        } catch (automationError) {
+          console.error('[Automation] Error processing trigger:', automationError);
         }
 
         break;

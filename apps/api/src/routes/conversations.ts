@@ -3,7 +3,9 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { type AppType, requireAuth } from '../middleware/auth';
+import { channelsService } from '../services/channels.service';
 import { conversationsService } from '../services/conversations.service';
+import { metaService } from '../services/meta.service';
 
 const conversationsRoutes = new Hono<AppType>();
 
@@ -207,6 +209,56 @@ conversationsRoutes.post('/:id/transfer', zValidator('json', transferSchema), as
   }
 
   return c.json(conversation);
+});
+
+// Send typing indicator
+conversationsRoutes.post('/:id/typing', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const conversation = await conversationsService.findById(id, auth.tenantId);
+
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
+  }
+
+  // Get channel config
+  const channel = await channelsService.findById(conversation.channelId, auth.tenantId);
+
+  if (!channel) {
+    throw new HTTPException(404, { message: 'Channel not found' });
+  }
+
+  const config = channel.config as Record<string, string>;
+  const contact = conversation.contact;
+
+  if (!contact?.externalId) {
+    return c.json({ success: false, error: 'Contact has no external ID' }, 400);
+  }
+
+  try {
+    // Send typing indicator based on channel type
+    if (channel.type === 'instagram') {
+      const igUserId = config.igUserId || config.pageId;
+      if (igUserId && config.pageAccessToken) {
+        await metaService.sendInstagramTypingOn(
+          igUserId,
+          config.pageAccessToken,
+          contact.externalId,
+        );
+      }
+    } else if (channel.type === 'messenger') {
+      if (config.pageAccessToken) {
+        await metaService.sendMessengerTypingOn(config.pageAccessToken, contact.externalId);
+      }
+    }
+    // Note: WhatsApp (Evolution) doesn't support typing indicators via API
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('[Typing] Error sending typing indicator:', error);
+    return c.json({ success: false, error: 'Failed to send typing indicator' }, 500);
+  }
 });
 
 export { conversationsRoutes };

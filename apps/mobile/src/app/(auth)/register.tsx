@@ -1,6 +1,7 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { api } from '../../services/api';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -19,12 +21,41 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
+    // Validation
+    if (!name.trim() || !company.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Erro', 'A senha deve ter pelo menos 8 caracteres');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Erro', 'Por favor, insira um email válido');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Implement registration
-      router.replace('/(tabs)');
+      await api.post('/auth/register', {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        tenantName: company.trim(),
+      });
+
+      Alert.alert('Conta criada!', 'Sua conta foi criada com sucesso. Faça login para continuar.', [
+        { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+      ]);
     } catch (error) {
-      console.error(error);
+      console.error('Register error:', error);
+      Alert.alert(
+        'Erro ao criar conta',
+        error instanceof Error ? error.message : 'Ocorreu um erro. Tente novamente.',
+      );
     } finally {
       setIsLoading(false);
     }

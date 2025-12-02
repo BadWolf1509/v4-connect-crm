@@ -1,6 +1,7 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Text,
@@ -9,19 +10,30 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../hooks/use-auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Implement login
+      await login(email.trim(), password);
       router.replace('/(tabs)');
     } catch (error) {
-      console.error(error);
+      console.error('Login error:', error);
+      Alert.alert(
+        'Erro ao entrar',
+        error instanceof Error ? error.message : 'Email ou senha incorretos',
+      );
     } finally {
       setIsLoading(false);
     }

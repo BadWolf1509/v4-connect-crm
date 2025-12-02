@@ -11,6 +11,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { errorHandler } from './middleware/error-handler';
 import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
+import { automationsRoutes } from './routes/automations';
 import { campaignsRoutes } from './routes/campaigns';
 import { channelsRoutes } from './routes/channels';
 import { chatbotsRoutes } from './routes/chatbots';
@@ -32,6 +33,7 @@ import { uploadRoutes } from './routes/upload';
 import { usersRoutes } from './routes/users';
 import { webhooksRoutes } from './routes/webhooks';
 import { whatsappRoutes } from './routes/whatsapp';
+import { docsRoutes } from './docs/openapi';
 
 const app = new Hono();
 
@@ -75,6 +77,7 @@ const api = new Hono();
 
 api.route('/analytics', analyticsRoutes);
 api.route('/auth', authRoutes);
+api.route('/automations', automationsRoutes);
 api.route('/channels', channelsRoutes);
 api.route('/contacts', contactsRoutes);
 api.route('/conversations', conversationsRoutes);
@@ -103,6 +106,9 @@ app.route('/api/v1/invite', inviteAcceptRoutes);
 
 // Meta webhooks (mounted directly for Meta verification)
 app.route('/meta', metaWebhooksRoutes);
+
+// API Documentation (Swagger UI)
+app.route('/docs', docsRoutes);
 
 // 404 handler
 app.notFound((c) => {

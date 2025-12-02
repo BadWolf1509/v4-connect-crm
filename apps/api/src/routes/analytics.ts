@@ -67,4 +67,70 @@ analyticsRoutes.get('/response-time/daily', async (c) => {
   return c.json({ data });
 });
 
+// Campaign metrics
+analyticsRoutes.get('/campaigns', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const data = await analyticsService.getCampaignMetrics(auth.tenantId, { days });
+  return c.json(data);
+});
+
+// Campaign performance list
+analyticsRoutes.get('/campaigns/performance', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const data = await analyticsService.getCampaignPerformance(auth.tenantId, { days });
+  return c.json({ data });
+});
+
+// Agent performance metrics
+analyticsRoutes.get('/agents', async (c) => {
+  const auth = c.get('auth');
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const data = await analyticsService.getAgentPerformance(auth.tenantId, { days });
+  return c.json({ data });
+});
+
+// Export report
+analyticsRoutes.get('/export/:type', async (c) => {
+  const auth = c.get('auth');
+  const type = c.req.param('type') as 'overview' | 'conversations' | 'agents' | 'campaigns';
+  const days = Number.parseInt(c.req.query('days') || '30');
+  const format = c.req.query('format') || 'json';
+
+  const data = await analyticsService.exportReport(auth.tenantId, type, { days });
+
+  if (format === 'csv') {
+    // Convert to CSV
+    if (data.length === 0) {
+      return c.text('', 200, {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${type}-report.csv"`,
+      });
+    }
+
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(','),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'object') return JSON.stringify(value).replace(/"/g, '""');
+            return String(value).includes(',') ? `"${value}"` : String(value);
+          })
+          .join(','),
+      ),
+    ];
+
+    return c.text(csvRows.join('\n'), 200, {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="${type}-report.csv"`,
+    });
+  }
+
+  return c.json({ data, exportedAt: new Date().toISOString() });
+});
+
 export { analyticsRoutes };

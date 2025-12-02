@@ -1,7 +1,7 @@
-import { and, count, eq, gte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
-const { conversations, messages, contacts, channels } = schema;
+const { conversations, messages, contacts, channels, campaigns, campaignContacts, users } = schema;
 
 export interface AnalyticsOverview {
   totalConversations: number;
@@ -49,6 +49,48 @@ export interface DailyResponseTime {
   date: string;
   averageResponseTime: number; // in seconds
   totalResponses: number;
+}
+
+export interface CampaignMetrics {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  completedCampaigns: number;
+  totalMessagesSent: number;
+  totalDelivered: number;
+  totalRead: number;
+  totalFailed: number;
+  deliveryRate: number;
+  readRate: number;
+}
+
+export interface CampaignPerformance {
+  id: string;
+  name: string;
+  status: string;
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  deliveryRate: number;
+  readRate: number;
+  createdAt: Date;
+}
+
+export interface AgentPerformance {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  conversationsHandled: number;
+  conversationsResolved: number;
+  messageseSent: number;
+  averageResponseTime: number;
+  resolutionRate: number;
+}
+
+export interface DateRangeFilter {
+  startDate?: Date;
+  endDate?: Date;
+  days?: number;
 }
 
 export const analyticsService = {
@@ -405,5 +447,265 @@ export const analyticsService = {
     }
 
     return filledResult;
+  },
+
+  // Campaign metrics
+  async getCampaignMetrics(tenantId: string, filter?: DateRangeFilter): Promise<CampaignMetrics> {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    // Get all campaigns in date range
+    const campaignData = await db
+      .select({
+        id: campaigns.id,
+        status: campaigns.status,
+        stats: campaigns.stats,
+      })
+      .from(campaigns)
+      .where(
+        and(
+          eq(campaigns.tenantId, tenantId),
+          startDate ? gte(campaigns.createdAt, startDate) : undefined,
+          endDate ? lte(campaigns.createdAt, endDate) : undefined,
+        ),
+      );
+
+    let totalSent = 0;
+    let totalDelivered = 0;
+    let totalRead = 0;
+    let totalFailed = 0;
+    let activeCampaigns = 0;
+    let completedCampaigns = 0;
+
+    for (const campaign of campaignData) {
+      const stats = campaign.stats as { sent?: number; delivered?: number; read?: number; failed?: number } | null;
+      if (stats) {
+        totalSent += stats.sent || 0;
+        totalDelivered += stats.delivered || 0;
+        totalRead += stats.read || 0;
+        totalFailed += stats.failed || 0;
+      }
+      if (campaign.status === 'running' || campaign.status === 'scheduled') activeCampaigns++;
+      if (campaign.status === 'completed') completedCampaigns++;
+    }
+
+    return {
+      totalCampaigns: campaignData.length,
+      activeCampaigns,
+      completedCampaigns,
+      totalMessagesSent: totalSent,
+      totalDelivered,
+      totalRead,
+      totalFailed,
+      deliveryRate: totalSent > 0 ? Math.round((totalDelivered / totalSent) * 100) : 0,
+      readRate: totalDelivered > 0 ? Math.round((totalRead / totalDelivered) * 100) : 0,
+    };
+  },
+
+  // Campaign performance list
+  async getCampaignPerformance(tenantId: string, filter?: DateRangeFilter): Promise<CampaignPerformance[]> {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const campaignData = await db
+      .select({
+        id: campaigns.id,
+        name: campaigns.name,
+        status: campaigns.status,
+        stats: campaigns.stats,
+        createdAt: campaigns.createdAt,
+      })
+      .from(campaigns)
+      .where(
+        and(
+          eq(campaigns.tenantId, tenantId),
+          startDate ? gte(campaigns.createdAt, startDate) : undefined,
+          endDate ? lte(campaigns.createdAt, endDate) : undefined,
+        ),
+      )
+      .orderBy(sql`${campaigns.createdAt} DESC`)
+      .limit(20);
+
+    return campaignData.map((campaign) => {
+      const stats = campaign.stats as { sent?: number; delivered?: number; read?: number; failed?: number } | null;
+      const sent = stats?.sent || 0;
+      const delivered = stats?.delivered || 0;
+      const read = stats?.read || 0;
+      const failed = stats?.failed || 0;
+
+      return {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        sent,
+        delivered,
+        read,
+        failed,
+        deliveryRate: sent > 0 ? Math.round((delivered / sent) * 100) : 0,
+        readRate: delivered > 0 ? Math.round((read / delivered) * 100) : 0,
+        createdAt: campaign.createdAt,
+      };
+    });
+  },
+
+  // Agent performance metrics
+  async getAgentPerformance(tenantId: string, filter?: DateRangeFilter): Promise<AgentPerformance[]> {
+    const { startDate, endDate } = this.getDateRange(filter);
+    const startDateStr = startDate?.toISOString() || new Date(0).toISOString();
+    const endDateStr = endDate?.toISOString() || new Date().toISOString();
+
+    const result = await db.execute(sql`
+      WITH agent_conversations AS (
+        SELECT
+          c.assignee_id,
+          c.id as conversation_id,
+          c.status
+        FROM conversations c
+        WHERE c.tenant_id = ${tenantId}
+          AND c.assignee_id IS NOT NULL
+          AND c.created_at >= ${startDateStr}::timestamptz
+          AND c.created_at <= ${endDateStr}::timestamptz
+      ),
+      agent_messages AS (
+        SELECT
+          m.sender_id,
+          COUNT(*) as message_count
+        FROM messages m
+        WHERE m.tenant_id = ${tenantId}
+          AND m.sender_type = 'user'
+          AND m.sender_id IS NOT NULL
+          AND m.created_at >= ${startDateStr}::timestamptz
+          AND m.created_at <= ${endDateStr}::timestamptz
+          AND m.deleted_at IS NULL
+        GROUP BY m.sender_id
+      ),
+      response_times AS (
+        SELECT
+          om.sender_id,
+          AVG(EXTRACT(EPOCH FROM (om.created_at - im.created_at)))::float as avg_response
+        FROM messages im
+        INNER JOIN messages om ON
+          om.conversation_id = im.conversation_id
+          AND om.direction = 'outbound'
+          AND om.sender_type = 'user'
+          AND om.created_at > im.created_at
+          AND om.deleted_at IS NULL
+        WHERE im.tenant_id = ${tenantId}
+          AND im.direction = 'inbound'
+          AND im.sender_type = 'contact'
+          AND im.created_at >= ${startDateStr}::timestamptz
+          AND im.created_at <= ${endDateStr}::timestamptz
+          AND im.deleted_at IS NULL
+        GROUP BY om.sender_id
+      )
+      SELECT
+        u.id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        COALESCE(COUNT(DISTINCT ac.conversation_id), 0)::int as conversations_handled,
+        COALESCE(SUM(CASE WHEN ac.status = 'resolved' THEN 1 ELSE 0 END), 0)::int as conversations_resolved,
+        COALESCE(am.message_count, 0)::int as messages_sent,
+        COALESCE(rt.avg_response, 0)::float as avg_response_time
+      FROM users u
+      LEFT JOIN agent_conversations ac ON ac.assignee_id = u.id
+      LEFT JOIN agent_messages am ON am.sender_id = u.id
+      LEFT JOIN response_times rt ON rt.sender_id = u.id
+      WHERE u.tenant_id = ${tenantId}
+        AND u.role IN ('admin', 'agent')
+      GROUP BY u.id, u.name, u.email, am.message_count, rt.avg_response
+      ORDER BY conversations_handled DESC
+    `);
+
+    const rows = result as unknown as Array<Record<string, unknown>>;
+    return rows.map((row) => {
+      const handled = Number(row.conversations_handled || 0);
+      const resolved = Number(row.conversations_resolved || 0);
+      return {
+        userId: row.user_id as string,
+        userName: row.user_name as string,
+        userEmail: row.user_email as string,
+        conversationsHandled: handled,
+        conversationsResolved: resolved,
+        messageseSent: Number(row.messages_sent || 0),
+        averageResponseTime: Math.round(Number(row.avg_response_time || 0)),
+        resolutionRate: handled > 0 ? Math.round((resolved / handled) * 100) : 0,
+      };
+    });
+  },
+
+  // Export report data
+  async exportReport(
+    tenantId: string,
+    reportType: 'overview' | 'conversations' | 'agents' | 'campaigns',
+    filter?: DateRangeFilter,
+  ): Promise<Record<string, unknown>[]> {
+    const { startDate, endDate, days } = this.getDateRange(filter);
+
+    switch (reportType) {
+      case 'overview': {
+        const overview = await this.getOverview(tenantId);
+        const dailyConversations = await this.getDailyConversations(tenantId, days || 30);
+        const responseTime = await this.getResponseTimeMetrics(tenantId, days || 30);
+        return [{
+          ...overview,
+          ...responseTime,
+          dailyConversations,
+          exportedAt: new Date().toISOString(),
+        }];
+      }
+      case 'conversations': {
+        const result = await db
+          .select({
+            id: conversations.id,
+            status: conversations.status,
+            createdAt: conversations.createdAt,
+            lastMessageAt: conversations.lastMessageAt,
+            contactName: contacts.name,
+            contactPhone: contacts.phone,
+            channelName: channels.name,
+            channelType: channels.type,
+          })
+          .from(conversations)
+          .leftJoin(contacts, eq(conversations.contactId, contacts.id))
+          .leftJoin(channels, eq(conversations.channelId, channels.id))
+          .where(
+            and(
+              eq(conversations.tenantId, tenantId),
+              startDate ? gte(conversations.createdAt, startDate) : undefined,
+              endDate ? lte(conversations.createdAt, endDate) : undefined,
+            ),
+          )
+          .orderBy(sql`${conversations.createdAt} DESC`)
+          .limit(1000);
+        return result;
+      }
+      case 'agents': {
+        const agents = await this.getAgentPerformance(tenantId, filter);
+        return agents as unknown as Record<string, unknown>[];
+      }
+      case 'campaigns': {
+        const campaignPerf = await this.getCampaignPerformance(tenantId, filter);
+        return campaignPerf as unknown as Record<string, unknown>[];
+      }
+      default:
+        return [];
+    }
+  },
+
+  // Helper to get date range from filter
+  getDateRange(filter?: DateRangeFilter): { startDate?: Date; endDate?: Date; days: number } {
+    if (!filter) {
+      return { days: 30 };
+    }
+
+    let startDate = filter.startDate;
+    let endDate = filter.endDate || new Date();
+    const days = filter.days || 30;
+
+    if (!startDate && days) {
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    return { startDate, endDate, days };
   },
 };

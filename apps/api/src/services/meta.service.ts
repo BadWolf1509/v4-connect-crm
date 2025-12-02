@@ -266,6 +266,32 @@ class MetaService {
     });
   }
 
+  /**
+   * Send typing indicator for Messenger
+   */
+  async sendMessengerTypingOn(
+    pageAccessToken: string,
+    recipientId: string,
+  ): Promise<MetaApiResponse<unknown>> {
+    return this.request('/me/messages', 'POST', pageAccessToken, {
+      recipient: { id: recipientId },
+      sender_action: 'typing_on',
+    });
+  }
+
+  /**
+   * Stop typing indicator for Messenger
+   */
+  async sendMessengerTypingOff(
+    pageAccessToken: string,
+    recipientId: string,
+  ): Promise<MetaApiResponse<unknown>> {
+    return this.request('/me/messages', 'POST', pageAccessToken, {
+      recipient: { id: recipientId },
+      sender_action: 'typing_off',
+    });
+  }
+
   // ==================== INSTAGRAM DIRECT ====================
 
   /**
@@ -338,6 +364,35 @@ class MetaService {
     );
   }
 
+  /**
+   * Send typing indicator for Instagram
+   * Note: Instagram uses a different endpoint structure
+   */
+  async sendInstagramTypingOn(
+    igUserId: string,
+    pageAccessToken: string,
+    recipientId: string,
+  ): Promise<MetaApiResponse<unknown>> {
+    return this.request(`/${igUserId}/messages`, 'POST', pageAccessToken, {
+      recipient: { id: recipientId },
+      sender_action: 'typing_on',
+    });
+  }
+
+  /**
+   * Stop typing indicator for Instagram
+   */
+  async sendInstagramTypingOff(
+    igUserId: string,
+    pageAccessToken: string,
+    recipientId: string,
+  ): Promise<MetaApiResponse<unknown>> {
+    return this.request(`/${igUserId}/messages`, 'POST', pageAccessToken, {
+      recipient: { id: recipientId },
+      sender_action: 'typing_off',
+    });
+  }
+
   // ==================== WEBHOOKS ====================
 
   /**
@@ -361,7 +416,7 @@ class MetaService {
   parseWebhookEvent(body: unknown): {
     platform: 'messenger' | 'instagram';
     events: Array<{
-      type: 'message' | 'delivery' | 'read' | 'postback';
+      type: 'message' | 'delivery' | 'read' | 'postback' | 'reaction';
       senderId: string;
       recipientId: string;
       timestamp: number;
@@ -383,6 +438,12 @@ class MetaService {
       postback?: {
         title: string;
         payload: string;
+      };
+      reaction?: {
+        mid: string;
+        action: 'react' | 'unreact';
+        emoji?: string;
+        reaction?: string;
       };
     }>;
   } | null {
@@ -415,13 +476,19 @@ class MetaService {
               title: string;
               payload: string;
             };
+            reaction?: {
+              mid: string;
+              action: 'react' | 'unreact';
+              emoji?: string;
+              reaction?: string;
+            };
           }>;
         }>;
       };
 
       const platform = payload.object === 'instagram' ? 'instagram' : 'messenger';
       const events: Array<{
-        type: 'message' | 'delivery' | 'read' | 'postback';
+        type: 'message' | 'delivery' | 'read' | 'postback' | 'reaction';
         senderId: string;
         recipientId: string;
         timestamp: number;
@@ -444,15 +511,22 @@ class MetaService {
           title: string;
           payload: string;
         };
+        reaction?: {
+          mid: string;
+          action: 'react' | 'unreact';
+          emoji?: string;
+          reaction?: string;
+        };
       }> = [];
 
       for (const entry of payload.entry) {
         for (const event of entry.messaging || []) {
-          let type: 'message' | 'delivery' | 'read' | 'postback' = 'message';
+          let type: 'message' | 'delivery' | 'read' | 'postback' | 'reaction' = 'message';
 
           if (event.delivery) type = 'delivery';
           else if (event.read) type = 'read';
           else if (event.postback) type = 'postback';
+          else if (event.reaction) type = 'reaction';
 
           events.push({
             type,
@@ -463,6 +537,7 @@ class MetaService {
             delivery: event.delivery,
             read: event.read,
             postback: event.postback,
+            reaction: event.reaction,
           });
         }
       }

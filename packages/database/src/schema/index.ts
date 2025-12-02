@@ -17,3 +17,4 @@ export * from './quick-replies';
 export * from './invites';
 export * from './tags';
 export * from './notifications';
+export * from './automations';
