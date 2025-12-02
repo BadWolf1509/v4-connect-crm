@@ -137,4 +137,87 @@ campaignsRoutes.post('/:id/schedule', zValidator('json', scheduleSchema), async 
   });
 });
 
+// Pause running campaign
+campaignsRoutes.post('/:id/pause', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const campaign = await campaignsService.findById(id, auth.tenantId);
+
+  if (!campaign) {
+    throw new HTTPException(404, { message: 'Campaign not found' });
+  }
+
+  if (campaign.status !== 'running') {
+    throw new HTTPException(400, { message: 'Only running campaigns can be paused' });
+  }
+
+  const updated = await campaignsService.updateStatus(id, auth.tenantId, 'paused');
+
+  return c.json({ campaign: updated, message: 'Campaign paused' });
+});
+
+// Resume paused campaign
+campaignsRoutes.post('/:id/resume', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const campaign = await campaignsService.findById(id, auth.tenantId);
+
+  if (!campaign) {
+    throw new HTTPException(404, { message: 'Campaign not found' });
+  }
+
+  if (campaign.status !== 'paused') {
+    throw new HTTPException(400, { message: 'Only paused campaigns can be resumed' });
+  }
+
+  // Resume by changing status back to running
+  // The worker will continue processing pending contacts
+  const updated = await campaignsService.updateStatus(id, auth.tenantId, 'running');
+
+  // Re-queue the campaign to process remaining contacts
+  await addCampaignStartJob({
+    campaignId: id,
+    tenantId: auth.tenantId,
+    type: 'broadcast',
+  });
+
+  return c.json({ campaign: updated, message: 'Campaign resumed' });
+});
+
+// Cancel campaign
+campaignsRoutes.post('/:id/cancel', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const campaign = await campaignsService.findById(id, auth.tenantId);
+
+  if (!campaign) {
+    throw new HTTPException(404, { message: 'Campaign not found' });
+  }
+
+  if (campaign.status === 'completed' || campaign.status === 'cancelled') {
+    throw new HTTPException(400, { message: 'Campaign is already completed or cancelled' });
+  }
+
+  const updated = await campaignsService.updateStatus(id, auth.tenantId, 'cancelled');
+
+  return c.json({ campaign: updated, message: 'Campaign cancelled' });
+});
+
+// Get campaign stats
+campaignsRoutes.get('/:id/stats', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const stats = await campaignsService.getStats(id, auth.tenantId);
+
+  if (!stats) {
+    throw new HTTPException(404, { message: 'Campaign not found' });
+  }
+
+  return c.json(stats);
+});
+
 export { campaignsRoutes };

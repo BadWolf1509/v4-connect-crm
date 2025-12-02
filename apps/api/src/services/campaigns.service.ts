@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
 const { campaigns, campaignContacts, contacts, channels } = schema;
@@ -163,5 +163,77 @@ export const campaignsService = {
       .returning();
 
     return result ? this.findById(id, tenantId) : null;
+  },
+
+  async updateStatus(id: string, tenantId: string, status: CampaignStatus) {
+    const now = new Date();
+    const updates: Record<string, unknown> = {
+      status,
+      updatedAt: now,
+    };
+
+    // Set completion time if cancelled or completed
+    if (status === 'cancelled' || status === 'completed') {
+      updates.completedAt = now;
+    }
+
+    const [result] = await db
+      .update(campaigns)
+      .set(updates)
+      .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, tenantId)))
+      .returning();
+
+    return result || null;
+  },
+
+  async getStats(id: string, tenantId: string) {
+    const [campaign] = await db
+      .select({
+        id: campaigns.id,
+        name: campaigns.name,
+        status: campaigns.status,
+        stats: campaigns.stats,
+        startedAt: campaigns.startedAt,
+        completedAt: campaigns.completedAt,
+      })
+      .from(campaigns)
+      .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, tenantId)))
+      .limit(1);
+
+    if (!campaign) return null;
+
+    // Get detailed contact stats
+    const contactStats = await db
+      .select({
+        status: campaignContacts.status,
+        count: count(),
+      })
+      .from(campaignContacts)
+      .where(eq(campaignContacts.campaignId, id))
+      .groupBy(campaignContacts.status);
+
+    const statusCounts: Record<string, number> = {};
+    for (const stat of contactStats) {
+      statusCounts[stat.status] = Number(stat.count);
+    }
+
+    return {
+      campaign: {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        startedAt: campaign.startedAt,
+        completedAt: campaign.completedAt,
+      },
+      stats: campaign.stats,
+      contacts: {
+        pending: statusCounts.pending || 0,
+        sent: statusCounts.sent || 0,
+        delivered: statusCounts.delivered || 0,
+        read: statusCounts.read || 0,
+        failed: statusCounts.failed || 0,
+        total: Object.values(statusCounts).reduce((a, b) => a + b, 0),
+      },
+    };
   },
 };

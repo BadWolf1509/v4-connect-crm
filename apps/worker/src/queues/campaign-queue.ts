@@ -171,16 +171,27 @@ async function startCampaign(data: CampaignJob) {
         ? 'whatsapp_official'
         : (campaign.channelType as SendCampaignMessageJob['channelType']);
 
-  for (const recipient of recipients) {
-    await campaignQueue.add('send-message', {
-      campaignId,
-      tenantId,
-      channelId: campaign.channelId,
-      channelType,
-      contact: recipient,
-      content: campaign.content,
-      templateId: campaign.templateId,
-    });
+  // Rate limiting: 1 message per second to avoid channel blocking
+  // Each message is delayed by its index * 1000ms
+  const RATE_LIMIT_DELAY_MS = 1000;
+
+  for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i]!;
+    await campaignQueue.add(
+      'send-message',
+      {
+        campaignId,
+        tenantId,
+        channelId: campaign.channelId,
+        channelType,
+        contact: recipient,
+        content: campaign.content,
+        templateId: campaign.templateId,
+      },
+      {
+        delay: i * RATE_LIMIT_DELAY_MS,
+      },
+    );
   }
 
   return { queued: recipients.length };
@@ -197,6 +208,25 @@ async function sendCampaignMessage(data: SendCampaignMessageJob) {
     templateParams,
     channelType,
   } = data;
+
+  // Check if campaign is paused or cancelled before sending
+  const [campaignStatus] = await db
+    .select({ status: schema.campaigns.status })
+    .from(schema.campaigns)
+    .where(and(eq(schema.campaigns.id, campaignId), eq(schema.campaigns.tenantId, tenantId)))
+    .limit(1);
+
+  if (!campaignStatus || campaignStatus.status === 'cancelled') {
+    console.log(`[Campaigns] Campaign ${campaignId} cancelled, skipping message`);
+    return { sent: false, reason: 'cancelled' };
+  }
+
+  if (campaignStatus.status === 'paused') {
+    // Re-queue the message with a delay when paused
+    console.log(`[Campaigns] Campaign ${campaignId} paused, re-queuing message`);
+    await campaignQueue.add('send-message', data, { delay: 5000 });
+    return { sent: false, reason: 'paused' };
+  }
 
   const conversationId = await ensureConversation(tenantId, channelId, contact.id);
   const now = new Date();
