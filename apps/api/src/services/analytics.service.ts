@@ -1,7 +1,7 @@
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 import { db, schema } from '../lib/db';
 
-const { conversations, messages, contacts, channels, campaigns, campaignContacts, users } = schema;
+const { conversations, messages, contacts, channels, campaigns } = schema;
 
 export interface AnalyticsOverview {
   totalConversations: number;
@@ -477,7 +477,12 @@ export const analyticsService = {
     let completedCampaigns = 0;
 
     for (const campaign of campaignData) {
-      const stats = campaign.stats as { sent?: number; delivered?: number; read?: number; failed?: number } | null;
+      const stats = campaign.stats as {
+        sent?: number;
+        delivered?: number;
+        read?: number;
+        failed?: number;
+      } | null;
       if (stats) {
         totalSent += stats.sent || 0;
         totalDelivered += stats.delivered || 0;
@@ -502,7 +507,10 @@ export const analyticsService = {
   },
 
   // Campaign performance list
-  async getCampaignPerformance(tenantId: string, filter?: DateRangeFilter): Promise<CampaignPerformance[]> {
+  async getCampaignPerformance(
+    tenantId: string,
+    filter?: DateRangeFilter,
+  ): Promise<CampaignPerformance[]> {
     const { startDate, endDate } = this.getDateRange(filter);
 
     const campaignData = await db
@@ -525,7 +533,12 @@ export const analyticsService = {
       .limit(20);
 
     return campaignData.map((campaign) => {
-      const stats = campaign.stats as { sent?: number; delivered?: number; read?: number; failed?: number } | null;
+      const stats = campaign.stats as {
+        sent?: number;
+        delivered?: number;
+        read?: number;
+        failed?: number;
+      } | null;
       const sent = stats?.sent || 0;
       const delivered = stats?.delivered || 0;
       const read = stats?.read || 0;
@@ -547,7 +560,10 @@ export const analyticsService = {
   },
 
   // Agent performance metrics
-  async getAgentPerformance(tenantId: string, filter?: DateRangeFilter): Promise<AgentPerformance[]> {
+  async getAgentPerformance(
+    tenantId: string,
+    filter?: DateRangeFilter,
+  ): Promise<AgentPerformance[]> {
     const { startDate, endDate } = this.getDateRange(filter);
     const startDateStr = startDate?.toISOString() || new Date(0).toISOString();
     const endDateStr = endDate?.toISOString() || new Date().toISOString();
@@ -644,12 +660,14 @@ export const analyticsService = {
         const overview = await this.getOverview(tenantId);
         const dailyConversations = await this.getDailyConversations(tenantId, days || 30);
         const responseTime = await this.getResponseTimeMetrics(tenantId, days || 30);
-        return [{
-          ...overview,
-          ...responseTime,
-          dailyConversations,
-          exportedAt: new Date().toISOString(),
-        }];
+        return [
+          {
+            ...overview,
+            ...responseTime,
+            dailyConversations,
+            exportedAt: new Date().toISOString(),
+          },
+        ];
       }
       case 'conversations': {
         const result = await db
@@ -697,7 +715,7 @@ export const analyticsService = {
     }
 
     let startDate = filter.startDate;
-    let endDate = filter.endDate || new Date();
+    const endDate = filter.endDate || new Date();
     const days = filter.days || 30;
 
     if (!startDate && days) {

@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
-import { serveStatic } from 'hono/serve-static';
-import { type AppType } from '../middleware/auth';
+import type { AppType } from '../middleware/auth';
 
 const docsRoutes = new Hono<AppType>();
 
@@ -123,7 +122,10 @@ Authorization: Bearer <token>
           id: { type: 'string', format: 'uuid' },
           conversationId: { type: 'string', format: 'uuid' },
           content: { type: 'string', nullable: true },
-          type: { type: 'string', enum: ['text', 'image', 'video', 'audio', 'document', 'location', 'sticker'] },
+          type: {
+            type: 'string',
+            enum: ['text', 'image', 'video', 'audio', 'document', 'location', 'sticker'],
+          },
           direction: { type: 'string', enum: ['inbound', 'outbound'] },
           senderType: { type: 'string', enum: ['contact', 'user', 'bot'] },
           senderId: { type: 'string', format: 'uuid', nullable: true },
@@ -149,7 +151,10 @@ Authorization: Bearer <token>
         properties: {
           id: { type: 'string', format: 'uuid' },
           name: { type: 'string' },
-          type: { type: 'string', enum: ['whatsapp', 'instagram', 'messenger', 'email', 'webchat'] },
+          type: {
+            type: 'string',
+            enum: ['whatsapp', 'instagram', 'messenger', 'email', 'webchat'],
+          },
           provider: { type: 'string', enum: ['evolution', 'meta', 'internal'] },
           isActive: { type: 'boolean' },
           config: { type: 'object' },
@@ -176,7 +181,10 @@ Authorization: Bearer <token>
         properties: {
           id: { type: 'string', format: 'uuid' },
           name: { type: 'string' },
-          status: { type: 'string', enum: ['draft', 'scheduled', 'running', 'paused', 'completed', 'cancelled'] },
+          status: {
+            type: 'string',
+            enum: ['draft', 'scheduled', 'running', 'paused', 'completed', 'cancelled'],
+          },
           channelId: { type: 'string', format: 'uuid' },
           content: { type: 'string', nullable: true },
           templateId: { type: 'string', nullable: true },
@@ -373,7 +381,11 @@ Authorization: Bearer <token>
         tags: ['Conversations'],
         summary: 'Listar conversas',
         parameters: [
-          { name: 'status', in: 'query', schema: { type: 'string', enum: ['open', 'pending', 'resolved', 'snoozed'] } },
+          {
+            name: 'status',
+            in: 'query',
+            schema: { type: 'string', enum: ['open', 'pending', 'resolved', 'snoozed'] },
+          },
           { name: 'assigneeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'channelId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
@@ -467,7 +479,11 @@ Authorization: Bearer <token>
                 properties: {
                   conversationId: { type: 'string', format: 'uuid' },
                   content: { type: 'string' },
-                  type: { type: 'string', enum: ['text', 'image', 'video', 'audio', 'document'], default: 'text' },
+                  type: {
+                    type: 'string',
+                    enum: ['text', 'image', 'video', 'audio', 'document'],
+                    default: 'text',
+                  },
                   mediaUrl: { type: 'string', nullable: true },
                 },
               },
@@ -507,9 +523,7 @@ Authorization: Bearer <token>
       get: {
         tags: ['Analytics'],
         summary: 'Performance dos agentes',
-        parameters: [
-          { name: 'days', in: 'query', schema: { type: 'integer', default: 30 } },
-        ],
+        parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', default: 30 } }],
         responses: {
           200: {
             description: 'Métricas dos agentes',
@@ -545,9 +559,7 @@ Authorization: Bearer <token>
       get: {
         tags: ['Analytics'],
         summary: 'Métricas de campanhas',
-        parameters: [
-          { name: 'days', in: 'query', schema: { type: 'integer', default: 30 } },
-        ],
+        parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', default: 30 } }],
         responses: {
           200: {
             description: 'Métricas de campanhas',
@@ -575,8 +587,17 @@ Authorization: Bearer <token>
         tags: ['Analytics'],
         summary: 'Exportar relatório',
         parameters: [
-          { name: 'type', in: 'path', required: true, schema: { type: 'string', enum: ['overview', 'conversations', 'agents', 'campaigns'] } },
-          { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'csv'], default: 'json' } },
+          {
+            name: 'type',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', enum: ['overview', 'conversations', 'agents', 'campaigns'] },
+          },
+          {
+            name: 'format',
+            in: 'query',
+            schema: { type: 'string', enum: ['json', 'csv'], default: 'json' },
+          },
           { name: 'days', in: 'query', schema: { type: 'integer', default: 30 } },
         ],
         responses: {

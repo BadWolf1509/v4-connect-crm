@@ -8,6 +8,7 @@ import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { secureHeaders } from 'hono/secure-headers';
 
+import { docsRoutes } from './docs/openapi';
 import { errorHandler } from './middleware/error-handler';
 import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
@@ -33,7 +34,6 @@ import { uploadRoutes } from './routes/upload';
 import { usersRoutes } from './routes/users';
 import { webhooksRoutes } from './routes/webhooks';
 import { whatsappRoutes } from './routes/whatsapp';
-import { docsRoutes } from './docs/openapi';
 
 const app = new Hono();
 
