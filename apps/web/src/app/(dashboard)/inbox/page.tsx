@@ -1,6 +1,12 @@
 'use client';
 
-import { ContactPanel, MediaUpload, QuickReplies, TransferModal } from '@/components/inbox';
+import {
+  ContactPanel,
+  MediaUpload,
+  NewConversationModal,
+  QuickReplies,
+  TransferModal,
+} from '@/components/inbox';
 import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import { useSocketContext } from '@/providers/socket-provider';
@@ -17,6 +23,7 @@ import {
   MoreVertical,
   Paperclip,
   Phone,
+  Plus,
   RefreshCw,
   Search,
   Send,
@@ -78,6 +85,7 @@ export default function InboxPage() {
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showConversationMenu, setShowConversationMenu] = useState(false);
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -451,6 +459,16 @@ export default function InboxPage() {
     [selectedConversationId, session, addMessage],
   );
 
+  // Handle new conversation created
+  const handleNewConversationCreated = useCallback(
+    (conversationId: string) => {
+      fetchConversations().then(() => {
+        handleSelectConversation(conversationId);
+      });
+    },
+    [fetchConversations, handleSelectConversation],
+  );
+
   // Load conversations on mount and filter change
   useEffect(() => {
     fetchConversations();
@@ -500,7 +518,7 @@ export default function InboxPage() {
               className="w-full rounded-lg border border-gray-800 bg-gray-950 py-2 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:border-v4-red-500 focus:outline-none"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {(['all', 'open', 'pending', 'resolved'] as const).map((status) => (
               <button
                 type="button"
@@ -522,7 +540,7 @@ export default function InboxPage() {
           </div>
         </div>
 
-        {/* Connection Status */}
+        {/* Connection Status & New Conversation */}
         <div className="px-4 py-2 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
@@ -532,14 +550,25 @@ export default function InboxPage() {
               {isConnected ? 'Conectado' : 'Desconectado'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={fetchConversations}
-            className="p-1 text-gray-500 hover:text-white transition"
-            title="Atualizar"
-          >
-            <RefreshCw className={cn('h-4 w-4', conversationsLoading && 'animate-spin')} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowNewConversationModal(true)}
+              className="flex items-center gap-1 rounded-lg bg-v4-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-v4-red-600 transition"
+              title="Nova conversa"
+            >
+              <Plus className="h-3 w-3" />
+              Nova
+            </button>
+            <button
+              type="button"
+              onClick={fetchConversations}
+              className="p-1 text-gray-500 hover:text-white transition"
+              title="Atualizar"
+            >
+              <RefreshCw className={cn('h-4 w-4', conversationsLoading && 'animate-spin')} />
+            </button>
+          </div>
         </div>
 
         {/* Conversation List */}
@@ -969,6 +998,14 @@ export default function InboxPage() {
             fetchConversations();
             setShowTransferModal(false);
           }}
+        />
+      )}
+
+      {/* New Conversation Modal */}
+      {showNewConversationModal && (
+        <NewConversationModal
+          onClose={() => setShowNewConversationModal(false)}
+          onCreated={handleNewConversationCreated}
         />
       )}
     </div>

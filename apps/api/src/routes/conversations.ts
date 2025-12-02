@@ -25,6 +25,37 @@ const transferSchema = z.object({
   inboxId: z.string().uuid(),
 });
 
+const createConversationSchema = z.object({
+  contactId: z.string().uuid(),
+  channelId: z.string().uuid(),
+  inboxId: z.string().uuid().optional(),
+});
+
+const updateConversationSchema = z.object({
+  status: z.enum(['pending', 'open', 'resolved', 'snoozed']).optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+});
+
+// Create new conversation
+conversationsRoutes.post('/', zValidator('json', createConversationSchema), async (c) => {
+  const auth = c.get('auth');
+  const data = c.req.valid('json');
+
+  const { conversation, created } = await conversationsService.findOrCreate({
+    tenantId: auth.tenantId,
+    contactId: data.contactId,
+    channelId: data.channelId,
+    inboxId: data.inboxId,
+    assigneeId: auth.userId,
+    status: 'open',
+  });
+
+  // Get full conversation with contact and channel details
+  const fullConversation = await conversationsService.findById(conversation.id, auth.tenantId);
+
+  return c.json({ conversation: fullConversation, created }, created ? 201 : 200);
+});
+
 // List conversations
 conversationsRoutes.get('/', async (c) => {
   const auth = c.get('auth');
@@ -49,6 +80,21 @@ conversationsRoutes.get('/:id', async (c) => {
   const id = c.req.param('id');
 
   const conversation = await conversationsService.findById(id, auth.tenantId);
+
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
+  }
+
+  return c.json(conversation);
+});
+
+// Update conversation (generic)
+conversationsRoutes.patch('/:id', zValidator('json', updateConversationSchema), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
+
+  const conversation = await conversationsService.update(id, auth.tenantId, data);
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });

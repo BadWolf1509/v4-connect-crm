@@ -130,21 +130,151 @@ channelsRoutes.post('/:id/connect', async (c) => {
     throw new HTTPException(404, { message: 'Channel not found' });
   }
 
-  // TODO: Initiate connection based on channel type
-  // - WhatsApp: Return QR code from Evolution API or OAuth URL from 360dialog
-  // - Instagram/Messenger: Return Meta OAuth URL
-  // - Email: Validate SMTP settings
+  let qrCode: { base64?: string; code?: string } | null = null;
 
-  // For now, just mark as connected
+  // Handle connection based on channel type and provider
+  if (channel.type === 'whatsapp' && channel.provider === 'evolution') {
+    const instanceName = (channel.config as { instanceName?: string })?.instanceName;
+
+    if (instanceName) {
+      // Configure webhook for this instance
+      const apiUrl = process.env.API_URL || 'http://localhost:3001';
+      const webhookUrl = `${apiUrl}/webhooks/whatsapp/evolution`;
+
+      const webhookResult = await evolutionService.setWebhook(instanceName, {
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: false,
+        webhookBase64: true,
+        events: [
+          'messages.upsert',
+          'messages.update',
+          'connection.update',
+          'qrcode.updated',
+          'instance.delete',
+          'instance.logout',
+        ],
+      });
+
+      if (webhookResult.success) {
+        console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
+      } else {
+        console.error(`Failed to configure webhook for ${instanceName}:`, webhookResult.error);
+      }
+
+      // Get QR code for connection
+      const qrResult = await evolutionService.connectInstance(instanceName);
+      if (qrResult.success && qrResult.data) {
+        qrCode = {
+          base64: qrResult.data.base64,
+          code: qrResult.data.code,
+        };
+      }
+    }
+  }
+
+  // Mark as connected (or pending for WhatsApp which needs QR scan)
   const updatedChannel = await channelsService.connect(id, auth.tenantId);
 
   return c.json({
     channel: updatedChannel,
     connection: {
-      type: 'pending',
-      message: 'Connection initiated. Waiting for provider confirmation.',
+      type: qrCode ? 'qr_code' : 'pending',
+      message: qrCode
+        ? 'Scan the QR code with your phone to connect.'
+        : 'Connection initiated. Waiting for provider confirmation.',
+      qrCode: qrCode?.base64,
+      pairingCode: qrCode?.code,
     },
   });
+});
+
+// Reconfigure webhook for channel
+channelsRoutes.post('/:id/webhook', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const channel = await channelsService.findById(id, auth.tenantId);
+
+  if (!channel) {
+    throw new HTTPException(404, { message: 'Channel not found' });
+  }
+
+  if (channel.type !== 'whatsapp' || channel.provider !== 'evolution') {
+    throw new HTTPException(400, {
+      message: 'Webhook configuration only available for WhatsApp/Evolution channels',
+    });
+  }
+
+  const instanceName = (channel.config as { instanceName?: string })?.instanceName;
+
+  if (!instanceName) {
+    throw new HTTPException(400, { message: 'Instance not configured for this channel' });
+  }
+
+  // Configure webhook
+  const apiUrl = process.env.API_URL || 'http://localhost:3001';
+  const webhookUrl = `${apiUrl}/webhooks/whatsapp/evolution`;
+
+  const result = await evolutionService.setWebhook(instanceName, {
+    enabled: true,
+    url: webhookUrl,
+    webhookByEvents: false,
+    webhookBase64: true,
+    events: [
+      'messages.upsert',
+      'messages.update',
+      'connection.update',
+      'qrcode.updated',
+      'instance.delete',
+      'instance.logout',
+    ],
+  });
+
+  if (!result.success) {
+    throw new HTTPException(500, { message: `Failed to configure webhook: ${result.error}` });
+  }
+
+  // Get current webhook config to verify
+  const webhookConfig = await evolutionService.getWebhook(instanceName);
+
+  return c.json({
+    message: 'Webhook configured successfully',
+    webhookUrl,
+    config: webhookConfig.data,
+  });
+});
+
+// Get webhook status for channel
+channelsRoutes.get('/:id/webhook', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+
+  const channel = await channelsService.findById(id, auth.tenantId);
+
+  if (!channel) {
+    throw new HTTPException(404, { message: 'Channel not found' });
+  }
+
+  if (channel.type !== 'whatsapp' || channel.provider !== 'evolution') {
+    throw new HTTPException(400, {
+      message: 'Webhook status only available for WhatsApp/Evolution channels',
+    });
+  }
+
+  const instanceName = (channel.config as { instanceName?: string })?.instanceName;
+
+  if (!instanceName) {
+    throw new HTTPException(400, { message: 'Instance not configured for this channel' });
+  }
+
+  const result = await evolutionService.getWebhook(instanceName);
+
+  if (!result.success) {
+    throw new HTTPException(500, { message: `Failed to get webhook config: ${result.error}` });
+  }
+
+  return c.json(result.data);
 });
 
 // Disconnect channel
